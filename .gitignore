@@ -4,6 +4,7 @@ workflows-plan
 LLD*
 .ruff_cache
 specs/
+docs/github-app-setup.md
 
 # Python
 __pycache__/

@@ -71,31 +71,29 @@ podman build -t forge-dev:latest -f containers/Containerfile containers/
 
 ### 3. Start Services
 
-Use Docker Compose to start Redis and the API gateway:
-
 ```bash
-docker compose up redis forge-api -d
-```
+# Terminal 1 — Redis (the only service that runs in Docker)
+docker compose up redis -d
 
-Then run the worker on the host:
+# Terminal 2 — API server
+uv run uvicorn forge.main:app --reload --port 8000 --host 0.0.0.0
 
-```bash
+# Terminal 3 — Worker (must run on the host — it spawns Podman containers)
 uv run forge worker
 ```
-
-> **Why run the worker on the host?** The worker spawns ephemeral Podman containers for task execution. Running it inside a Docker container would require container-in-container access (socket mounting, privileged mode) which is not supported in this setup. Redis and the API gateway have no such requirement and run fine in Docker.
 
 ### 4. Configure Webhooks
 
 Set up webhooks in Jira and GitHub pointing to your server:
 
 **Jira Webhook:**
-- URL: `https://your-server.com/webhooks/jira`
+- URL: `https://your-server.com/api/v1/webhooks/jira`
 - Events: Issue created, updated, commented
 
 **GitHub Webhook:**
-- URL: `https://your-server.com/webhooks/github`
-- Events: Check runs, Pull requests, Pull request reviews
+- URL: `https://your-server.com/api/v1/webhooks/github`
+- Events: Pull requests, Pull request reviews, Check runs, Issue comments
+
 
 ## Usage
 
@@ -203,37 +201,22 @@ Create Bug → Analyze (RCA) → [Approval + Q&A] → Implement Fix → PR → C
 
 ## Architecture
 
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                              Forge System                                    │
-├─────────────────────────────────────────────────────────────────────────────┤
-│                                                                              │
-│  ┌──────────────────┐     ┌──────────────────┐     ┌──────────────────┐    │
-│  │   FastAPI        │────>│   Redis Queue    │────>│   LangGraph      │    │
-│  │   (Webhooks)     │     │   (Event Store)  │     │   (Workflows)    │    │
-│  └──────────────────┘     └──────────────────┘     └──────────────────┘    │
-│          │                                                   │              │
-│          v                                                   v              │
-│  ┌──────────────────┐                              ┌──────────────────┐    │
-│  │   Jira Client    │                              │  Podman          │    │
-│  │   GitHub Client  │                              │  Containers      │    │
-│  └──────────────────┘                              └──────────────────┘    │
-│                                                              │              │
-│                                                              v              │
-│                                                     ┌──────────────────┐    │
-│                                                     │   Deep Agents    │    │
-│                                                     │  (Claude/Gemini) │    │
-│                                                     └──────────────────┘    │
-└─────────────────────────────────────────────────────────────────────────────┘
-```
+Forge is event-driven. Jira and GitHub send webhooks; Forge processes them asynchronously and calls back into Jira and GitHub with the results. Human approval happens through Jira label changes and GitHub PR reviews, which fire new webhooks to resume the workflow.
+
 
 ### Components
 
-- **FastAPI Gateway** - Receives webhooks from Jira and GitHub, validates signatures
-- **Redis Queue** - FIFO message queue using Redis Streams for reliable event processing
-- **LangGraph Workflows** - State machines for Feature and Bug workflows with checkpointing
-- **Podman Containers** - Ephemeral execution environments for code implementation
-- **[Deep Agents](https://github.com/deepagents/deepagents)** - AI agent framework powering code implementation, with full tool access (file operations, shell, search). Supports Claude and Gemini as the underlying LLM.
+**FastAPI Gateway** — Receives webhooks from Jira and GitHub, validates signatures, and enqueues events. Returns immediately; all processing is async.
+
+**Redis Streams** — Durable FIFO queue between the API and the worker. Ensures no event is lost if the worker restarts mid-processing.
+
+**LangGraph Workflow** — State machine that routes each event to the right node (generate PRD, wait for approval, implement task, etc.) and checkpoints state to Redis after every step. Resumable from any point.
+
+**Orchestrator Agent** — A [Deep Agents](https://github.com/deepagents/deepagents) instance that runs on the host. Handles all planning stages: reads the Jira ticket, generates PRD/spec/epics/tasks via Claude or Gemini, posts results back to Jira, and waits for human approval via Jira label changes. Uses Jira and GitHub MCP tools.
+
+**Container Runner + Container Agent** — For implementation tasks, the workflow spawns an ephemeral Podman container. Inside runs a second Deep Agents instance with access to the cloned repository but no external network. It writes code, runs tests, commits, and exits. The host orchestrator then creates the PR.
+
+**Skills** — Markdown files loaded by both agents that define what to produce and how to reason. Resolved per Jira project: `skills/{project}/` overrides `skills/default/` on a per-skill basis. See [`skills/README.md`](skills/README.md).
 
 ## Configuration
 
@@ -290,17 +273,18 @@ src/forge/
 ├── integrations/        # Jira, GitHub, Agents, Langfuse clients
 ├── models/              # Domain models (workflow, events)
 ├── orchestrator/        # Worker and checkpointing
-├── workflow/            # Pluggable workflow system
-│   ├── base.py         # BaseWorkflow abstract class
-│   ├── router.py       # Workflow routing
-│   ├── feature/        # Feature workflow implementation
-│   ├── bug/            # Bug workflow implementation
+├── workflow/            # Feature and bug workflow state machines
 │   ├── nodes/          # Workflow node implementations
 │   └── gates/          # Human-in-the-loop approval gates
-├── prompts/v1/          # Versioned prompt templates
+├── prompts/v1/          # Versioned system prompt templates
 ├── queue/               # Redis Streams producer/consumer
 ├── sandbox/             # Container runner
+├── skills/              # Skill resolver (per-project path resolution)
 └── workspace/           # Git operations
+
+skills/                  # Agent skill files
+├── default/            # Stack-agnostic defaults for all projects
+└── {project}/          # Per-project overrides (Jira key, lowercase)
 
 containers/              # Container image and entrypoint
 tests/                   # Unit and integration tests
@@ -310,9 +294,9 @@ tests/                   # Unit and integration tests
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
-| `/health` | GET | Health check |
-| `/webhooks/jira` | POST | Jira webhook receiver |
-| `/webhooks/github` | POST | GitHub webhook receiver |
+| `/api/v1/health` | GET | Health check |
+| `/api/v1/webhooks/jira` | POST | Jira webhook receiver |
+| `/api/v1/webhooks/github` | POST | GitHub webhook receiver |
 | `/metrics` | GET | Prometheus metrics |
 
 ## Observability
@@ -338,44 +322,16 @@ All LLM calls are traced to Langfuse when configured:
 ## Development
 
 ```bash
-# Run tests
-uv run pytest
-
-# Run specific test file
-uv run pytest tests/unit/workflow/test_feature.py -v
-
-# Linting
-uv run ruff check src/
-
-# Format code
-uv run ruff format src/
-
-# Type checking
-uv run mypy src/forge/
+uv run pytest tests/unit/ -v   # run tests
+uv run ruff check src/         # lint
+uv run ruff format src/        # format
+uv run mypy src/forge/         # type check
 ```
 
-## Testing Locally
-
-Use the sample payloads to simulate Jira webhooks:
-
-```bash
-# Start a feature workflow
-curl -X POST http://localhost:8000/api/v1/webhooks/jira \
-  -H "Content-Type: application/json" \
-  -d @tests/payloads/01-feature-created.json
-
-# Approve PRD
-curl -X POST http://localhost:8000/api/v1/webhooks/jira \
-  -H "Content-Type: application/json" \
-  -d @tests/payloads/03-prd-approved.json
-```
-
-See `tests/payloads/README.md` for the full sequence.
+For a full local setup walkthrough, payload-based testing, Prometheus metrics, Langfuse tracing, and debugging tools, see the **[Developer Guide](docs/developer-guide.md)**.
 
 ## Contributing
 
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Run tests and linting
-5. Submit a pull request
+The primary way to contribute is to write a skill set for your team's stack — CI tooling, PRD format, implementation conventions — and share it under `skills/{your-project-key}/`. You only override the skills you change; everything else falls back to the defaults automatically.
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the full guide.
