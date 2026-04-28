@@ -19,9 +19,9 @@ def test_no_override_points_to_default() -> None:
     assert result[0].endswith("skills/default/")
 
 
-def test_test_proj_override_resolves() -> None:
+def test_project_override_resolves() -> None:
     skills_dir = PROJECT_ROOT / "skills"
-    result = resolve_skill_paths("TEST-1", skills_dir)
+    result = resolve_skill_paths("OPENSHIFT-123", skills_dir)
     assert len(result) == 2
     assert result[0].endswith("skills/default/")
-    assert result[1].endswith("skills/test/")
+    assert result[1].endswith("skills/openshift/")
