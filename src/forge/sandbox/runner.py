@@ -206,6 +206,7 @@ class ContainerRunner:
             container_path = f"/skills/skill_{i}"
             mounts.append((host_path.resolve(), container_path))
             container_paths.append(f"{container_path}/")
+            logger.info(f"Mounting skill dir: {host_path} → {container_path}")
 
         return mounts, ",".join(container_paths)
 
