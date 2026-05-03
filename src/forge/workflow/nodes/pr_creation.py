@@ -404,6 +404,7 @@ async def _generate_pr_body_with_agent(
         )
 
         if result and len(result) > 100:
+            result = agent._strip_preamble(result)
             logger.info(f"Generated PR body with agent ({len(result)} chars)")
             return result
         else:

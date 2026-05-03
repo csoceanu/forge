@@ -1,5 +1,7 @@
 You are reviewing a pull request description against the commit messages from recent CI fix commits.
 
+> **IMPORTANT**: Return ONLY the PR description content. Do not include any analysis, reasoning, or commentary. Start directly with the PR description.
+
 ## Current PR Description
 
 {current_description}

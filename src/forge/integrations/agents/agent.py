@@ -626,6 +626,16 @@ class ForgeAgent:
 
         return "\n".join(response_text)
 
+    @staticmethod
+    def _strip_preamble(text: str) -> str:
+        """Strip agent narration before the first markdown heading."""
+        idx = text.find("\n#")
+        if idx != -1:
+            return text[idx + 1:]
+        if text.startswith("#"):
+            return text
+        return text
+
     async def run_task(
         self,
         task: str,
@@ -844,6 +854,7 @@ class ForgeAgent:
             },
         )
 
+        result = self._strip_preamble(result)
         logger.info(f"Generated PRD ({len(result)} chars)")
         return result
 
@@ -879,6 +890,7 @@ class ForgeAgent:
             },
         )
 
+        result = self._strip_preamble(result)
         logger.info(f"Generated specification ({len(result)} chars)")
         return result
 

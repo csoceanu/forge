@@ -7,6 +7,8 @@ description: Generate a structured Product Requirements Document (PRD) from raw 
 
 Generate a Product Requirements Document using the template and guidelines below.
 
+> **IMPORTANT**: Return ONLY the PRD content. Do not include any planning text, explanations of what you're doing, or meta-commentary. Start directly with the PRD title.
+
 ## Instructions
 
 1. Read the template from `skills/default/generate-prd/prd-template.md`
@@ -66,5 +68,3 @@ Before returning the PRD, verify:
 ## Output Format
 
 Follow the structure in `skills/default/generate-prd/prd-template.md` exactly.
-
-IMPORTANT: Return ONLY the PRD content. Do not include any planning text, explanations of what you're doing, or meta-commentary. Start directly with the PRD title.

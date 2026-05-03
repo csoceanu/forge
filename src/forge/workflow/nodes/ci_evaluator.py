@@ -1,6 +1,9 @@
 """CI/CD evaluator node for monitoring and responding to CI results."""
 
+import io
 import logging
+import zipfile
+from pathlib import Path
 from typing import Any
 
 from forge.api.routes.metrics import record_ci_fix_attempt
@@ -65,7 +68,7 @@ async def evaluate_ci_status(state: WorkflowState) -> WorkflowState:
         _permanent_pending = settings.ignored_ci_checks
 
         all_passed = True
-        any_skipped = False
+        _any_skipped = False
         any_still_running = False
         failed_checks = []
 
@@ -99,7 +102,7 @@ async def evaluate_ci_status(state: WorkflowState) -> WorkflowState:
                     logger.info(
                         f"CI check skipped by human override: {check.get('name')}"
                     )
-                    any_skipped = True
+                    _any_skipped = True
                     continue
 
                 check_name = check.get("name", "")
@@ -303,7 +306,13 @@ async def attempt_ci_fix(state: WorkflowState) -> WorkflowState:
 
         failures_file = Path(workspace_path) / ".forge" / "ci-failures.md"
         fix_plan_file = Path(workspace_path) / ".forge" / "fix-plan.md"
+        logs_dir = Path(workspace_path) / ".forge" / "logs"
         failures_file.parent.mkdir(parents=True, exist_ok=True)
+
+        # Download job logs and artifacts before the container starts so the
+        # agent can read them directly without needing gh CLI authentication.
+        await _fetch_ci_logs_and_artifacts(failed_checks, logs_dir, GitHubClient())
+
         failures_file.write_text(_collect_error_info(failed_checks))
 
         analysis_prompt = load_prompt(
@@ -529,6 +538,72 @@ async def escalate_to_blocked(state: WorkflowState) -> WorkflowState:
         await jira.close()
 
 
+def _parse_run_info(log_url: str) -> tuple[str, str, str, str] | None:
+    """Extract (owner, repo, run_id, job_id) from a GitHub Actions html_url.
+
+    Expects: https://github.com/{owner}/{repo}/actions/runs/{run_id}/job/{job_id}
+    """
+    parts = log_url.rstrip("/").split("/")
+    if len(parts) < 10 or parts[5] != "actions" or parts[8] != "job":
+        return None
+    return parts[3], parts[4], parts[7], parts[9]
+
+
+async def _fetch_ci_logs_and_artifacts(
+    failed_checks: list[dict[str, Any]],
+    logs_dir: Path,
+    github: GitHubClient,
+) -> None:
+    """Download job logs and run artifacts for all failed checks into logs_dir.
+
+    Deduplicates artifact downloads across checks sharing the same run_id.
+    Silently skips any individual download that fails so one bad log does not
+    block the whole fix pipeline.
+    """
+    logs_dir.mkdir(parents=True, exist_ok=True)
+    fetched_run_ids: set[str] = set()
+
+    for check in failed_checks:
+        log_url = check.get("log_url", "")
+        check_name = check.get("name", "unknown")
+        info = _parse_run_info(log_url)
+        if not info:
+            continue
+        owner, repo, run_id, job_id = info
+        safe_name = check_name.replace(" ", "-").replace("/", "-")
+
+        # Job log
+        try:
+            log_text = await github.get_job_logs(owner, repo, job_id)
+            (logs_dir / f"{safe_name}-{job_id}.txt").write_text(log_text, errors="replace")
+            logger.info(f"Downloaded job log for '{check_name}' ({len(log_text)} chars)")
+        except Exception as e:
+            logger.warning(f"Could not download job log for '{check_name}': {e}")
+
+        # Artifacts (once per run_id)
+        if run_id in fetched_run_ids:
+            continue
+        fetched_run_ids.add(run_id)
+
+        try:
+            artifacts = await github.get_run_artifacts(owner, repo, run_id)
+            for artifact in artifacts:
+                artifact_id = artifact.get("id")
+                artifact_name = artifact.get("name", str(artifact_id))
+                try:
+                    zip_bytes = await github.download_artifact_zip(owner, repo, artifact_id)
+                    artifact_dir = logs_dir / artifact_name
+                    artifact_dir.mkdir(exist_ok=True)
+                    with zipfile.ZipFile(io.BytesIO(zip_bytes)) as zf:
+                        zf.extractall(artifact_dir)
+                    logger.info(f"Extracted artifact '{artifact_name}' to {artifact_dir}")
+                except Exception as e:
+                    logger.warning(f"Could not download artifact '{artifact_name}': {e}")
+        except Exception as e:
+            logger.warning(f"Could not list artifacts for run {run_id}: {e}")
+
+
+
 def _collect_error_info(failed_checks: list[dict[str, Any]]) -> str:
     """Collect and format error information from failed checks.
 
@@ -545,8 +620,14 @@ def _collect_error_info(failed_checks: list[dict[str, Any]]) -> str:
         parts.append(f"Result: {check.get('conclusion', 'failed')}")
 
         log_url = check.get("log_url", "")
+        check_name = check.get("name", "unknown")
         if log_url:
             parts.append(f"Log URL: {log_url}")
+            info = _parse_run_info(log_url)
+            if info:
+                _, _, _, job_id = info
+                safe_name = check_name.replace(" ", "-").replace("/", "-")
+                parts.append(f"Log file: `.forge/logs/{safe_name}-{job_id}.txt`")
 
         output = check.get("output", {})
         if output:

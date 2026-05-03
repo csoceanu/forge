@@ -150,6 +150,8 @@ async def sync_pr_description(
             finally:
                 await agent.close()
 
+            if updated_body:
+                updated_body = agent._strip_preamble(updated_body)
             if updated_body and updated_body.strip() != current_body.strip():
                 await github.update_pull_request(owner, repo, pr_number, body=updated_body)
                 ticket_key = state.get("ticket_key", "")

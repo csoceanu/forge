@@ -7,6 +7,8 @@ description: Generate a Technical Specification with behavioral acceptance crite
 
 Generate a Technical Specification using the template and guidelines below.
 
+> **IMPORTANT**: Return ONLY the specification content. Do not include any planning text, explanations of what you're doing, or meta-commentary. Start directly with the specification title.
+
 ## Core Purpose
 
 A spec translates PRD requirements into **testable behavioral contracts**. It answers "exactly how does this behave?" — not "why are we building it?" (that's the PRD).
@@ -58,5 +60,3 @@ Before returning the specification:
 
 Follow the structure in `skills/default/generate-spec/spec-template.md`.
 Omit any section that does not apply to this feature type.
-
-IMPORTANT: Return ONLY the specification content. Do not include any planning text, explanations of what you're doing, or meta-commentary. Start directly with the specification title.
