@@ -150,7 +150,9 @@ async def setup_workspace(state: WorkflowState) -> WorkflowState:
         git = GitOperations(workspace)
 
         # Clone repository (600s timeout)
-        logger.info(f"Starting clone of {current_repo} (this may take several minutes for large repos)...")
+        logger.info(
+            f"Starting clone of {current_repo} (this may take several minutes for large repos)..."
+        )
         git.clone()
         logger.info(f"Clone completed successfully for {current_repo}")
 
@@ -163,9 +165,7 @@ async def setup_workspace(state: WorkflowState) -> WorkflowState:
 
         if fork_owner and fork_repo_name:
             git.add_fork_remote(fork_owner, fork_repo_name)
-            branch_exists_on_fork = git.remote_branch_exists(
-                workspace.branch_name, remote="fork"
-            )
+            branch_exists_on_fork = git.remote_branch_exists(workspace.branch_name, remote="fork")
             if branch_exists_on_fork:
                 logger.info(
                     f"Branch '{workspace.branch_name}' exists on fork "
@@ -208,19 +208,22 @@ async def setup_workspace(state: WorkflowState) -> WorkflowState:
 
         logger.info(f"Workspace ready: {workspace}")
 
-        return update_state_timestamp({
-            **state,
-            "workspace_path": str(workspace.path),
-            "current_repo": current_repo,
-            "context": context,
-            "current_node": "implementation",
-            "last_error": None,
-        })
+        return update_state_timestamp(
+            {
+                **state,
+                "workspace_path": str(workspace.path),
+                "current_repo": current_repo,
+                "context": context,
+                "current_node": "implementation",
+                "last_error": None,
+            }
+        )
 
     except Exception as e:
         logger.error(f"Workspace setup failed for {ticket_key}: {e}")
         # Post error notification to Jira
         from forge.workflow.nodes.error_handler import notify_error
+
         await notify_error(state, str(e), "setup_workspace")
         return {
             **state,
@@ -258,12 +261,14 @@ async def teardown_workspace(state: WorkflowState) -> WorkflowState:
             manager.destroy_workspace(workspace)
             logger.info(f"Workspace destroyed: {workspace}")
 
-        return update_state_timestamp({
-            **state,
-            "workspace_path": None,
-            "current_node": "workspace_complete",
-            "last_error": None,
-        })
+        return update_state_timestamp(
+            {
+                **state,
+                "workspace_path": None,
+                "current_node": "workspace_complete",
+                "last_error": None,
+            }
+        )
 
     except Exception as e:
         logger.error(f"Workspace teardown failed for {ticket_key}: {e}")

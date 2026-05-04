@@ -94,11 +94,13 @@ async def implement_task(state: WorkflowState) -> WorkflowState:
                 git.stage_all()
                 git.commit(f"[{ticket_key}] chore: commit uncommitted changes after implementation")
 
-        return update_state_timestamp({
-            **state,
-            "current_node": "local_review",
-            "last_error": None,
-        })
+        return update_state_timestamp(
+            {
+                **state,
+                "current_node": "local_review",
+                "last_error": None,
+            }
+        )
 
     logger.info(f"Implementing Task {current_task} for {ticket_key}")
 
@@ -144,14 +146,16 @@ async def implement_task(state: WorkflowState) -> WorkflowState:
             implemented = state.get("implemented_tasks", [])
             implemented.append(current_task)
 
-            return update_state_timestamp({
-                **state,
-                "current_task_key": None,
-                "implemented_tasks": implemented,
-                "current_node": "implement_task",  # Loop back for next task
-                "last_error": None,
-                "retry_count": 0,  # Reset retry count on success
-            })
+            return update_state_timestamp(
+                {
+                    **state,
+                    "current_task_key": None,
+                    "implemented_tasks": implemented,
+                    "current_node": "implement_task",  # Loop back for next task
+                    "last_error": None,
+                    "retry_count": 0,  # Reset retry count on success
+                }
+            )
         else:
             # Container failed - treat all failures the same
             # The container agent is responsible for running tests and only
@@ -163,6 +167,7 @@ async def implement_task(state: WorkflowState) -> WorkflowState:
     except Exception as e:
         logger.error(f"Implementation failed for {current_task}: {e}")
         from forge.workflow.nodes.error_handler import notify_error
+
         await notify_error(state, str(e), "implement_task")
         return {
             **state,
@@ -189,10 +194,14 @@ def _clean_forge_gitignore(workspace_path: Path) -> None:
     if ".forge" not in content:
         return
 
-    cleaned = "\n".join(
-        line for line in content.splitlines()
-        if ".forge" not in line and "Forge workflow state" not in line
-    ).rstrip("\n") + "\n"
+    cleaned = (
+        "\n".join(
+            line
+            for line in content.splitlines()
+            if ".forge" not in line and "Forge workflow state" not in line
+        ).rstrip("\n")
+        + "\n"
+    )
 
     if cleaned != content:
         gitignore_path.write_text(cleaned)
@@ -222,20 +231,24 @@ def _build_task_description(
     ]
 
     if guardrails:
-        parts.extend([
-            "",
-            "## Project Guidelines",
-            guardrails,
-        ])
+        parts.extend(
+            [
+                "",
+                "## Project Guidelines",
+                guardrails,
+            ]
+        )
 
-    parts.extend([
-        "",
-        "## Instructions",
-        "1. Read and understand the existing codebase",
-        "2. Implement the task following the repository's coding standards",
-        "3. Write clean, well-documented code",
-        "4. Run tests to verify your changes work",
-        "5. Commit your changes with a descriptive message",
-    ])
+    parts.extend(
+        [
+            "",
+            "## Instructions",
+            "1. Read and understand the existing codebase",
+            "2. Implement the task following the repository's coding standards",
+            "3. Write clean, well-documented code",
+            "4. Run tests to verify your changes work",
+            "5. Commit your changes with a descriptive message",
+        ]
+    )
 
     return "\n".join(parts)

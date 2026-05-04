@@ -40,11 +40,13 @@ def configure_tracing(
     settings = get_settings()
 
     # Create resource with service metadata
-    resource = Resource.create({
-        "service.name": service_name,
-        "service.version": "0.1.0",
-        "deployment.environment": settings.log_level.lower(),
-    })
+    resource = Resource.create(
+        {
+            "service.name": service_name,
+            "service.version": "0.1.0",
+            "deployment.environment": settings.log_level.lower(),
+        }
+    )
 
     # Create tracer provider
     _tracer_provider = TracerProvider(resource=resource)
@@ -53,17 +55,13 @@ def configure_tracing(
     otlp_endpoint = getattr(settings, "otlp_endpoint", None)
     if otlp_endpoint:
         otlp_exporter = OTLPSpanExporter(endpoint=otlp_endpoint)
-        _tracer_provider.add_span_processor(
-            BatchSpanProcessor(otlp_exporter)
-        )
+        _tracer_provider.add_span_processor(BatchSpanProcessor(otlp_exporter))
         logger.info(f"OTLP tracing configured: {otlp_endpoint}")
 
     # Add console exporter for debugging
     if use_console or settings.log_level == "DEBUG":
         console_exporter = ConsoleSpanExporter()
-        _tracer_provider.add_span_processor(
-            BatchSpanProcessor(console_exporter)
-        )
+        _tracer_provider.add_span_processor(BatchSpanProcessor(console_exporter))
         logger.info("Console trace exporter enabled")
 
     # Set as global tracer provider

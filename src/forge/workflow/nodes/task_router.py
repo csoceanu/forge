@@ -45,23 +45,22 @@ async def route_tasks_by_repo(state: WorkflowState) -> WorkflowState:
     repo_count = len(tasks_by_repo)
     total_tasks = sum(len(tasks) for tasks in tasks_by_repo.values())
 
-    logger.info(
-        f"Routing {total_tasks} tasks across {repo_count} repos "
-        f"for {ticket_key}"
-    )
+    logger.info(f"Routing {total_tasks} tasks across {repo_count} repos for {ticket_key}")
 
     # Initialize tracking state
     repos_to_process = list(tasks_by_repo.keys())
 
-    return update_state_timestamp({
-        **state,
-        "repos_to_process": repos_to_process,
-        "current_repo": repos_to_process[0] if repos_to_process else None,
-        "repos_completed": [],
-        "implemented_tasks": [],
-        "current_node": "setup_workspace",
-        "last_error": None,
-    })
+    return update_state_timestamp(
+        {
+            **state,
+            "repos_to_process": repos_to_process,
+            "current_repo": repos_to_process[0] if repos_to_process else None,
+            "repos_completed": [],
+            "implemented_tasks": [],
+            "current_node": "setup_workspace",
+            "last_error": None,
+        }
+    )
 
 
 def route_after_pr(
@@ -108,12 +107,14 @@ def get_repo_execution_plan(state: WorkflowState) -> list[dict]:
 
     plan = []
     for repo, tasks in tasks_by_repo.items():
-        plan.append({
-            "repo": repo,
-            "task_count": len(tasks),
-            "tasks": tasks,
-            "status": "completed" if repo in repos_completed else "pending",
-        })
+        plan.append(
+            {
+                "repo": repo,
+                "task_count": len(tasks),
+                "tasks": tasks,
+                "status": "completed" if repo in repos_completed else "pending",
+            }
+        )
 
     return plan
 
@@ -150,10 +151,7 @@ def route_tasks_parallel(
 
     # Limit concurrent repos
     batch_size = min(repo_count, MAX_CONCURRENT_REPOS)
-    logger.info(
-        f"Spawning parallel execution for {batch_size}/{repo_count} "
-        f"repos on {ticket_key}"
-    )
+    logger.info(f"Spawning parallel execution for {batch_size}/{repo_count} repos on {ticket_key}")
 
     sends = []
     for i, repo in enumerate(repos[:batch_size]):
@@ -211,20 +209,21 @@ def aggregate_parallel_results(states: list[WorkflowState]) -> WorkflowState:
             errors.append(state["last_error"])
 
     logger.info(
-        f"Aggregated {len(all_pr_urls)} PRs from "
-        f"{len(all_repos_completed)} repos for {ticket_key}"
+        f"Aggregated {len(all_pr_urls)} PRs from {len(all_repos_completed)} repos for {ticket_key}"
     )
 
-    return update_state_timestamp({
-        **base_state,
-        "pr_urls": all_pr_urls,
-        "repos_completed": list(set(all_repos_completed)),
-        "implemented_tasks": list(set(all_implemented_tasks)),
-        "parallel_branch_id": None,
-        "parallel_total_branches": None,
-        "last_error": "; ".join(errors) if errors else None,
-        "current_node": "ci_evaluator",
-    })
+    return update_state_timestamp(
+        {
+            **base_state,
+            "pr_urls": all_pr_urls,
+            "repos_completed": list(set(all_repos_completed)),
+            "implemented_tasks": list(set(all_implemented_tasks)),
+            "parallel_branch_id": None,
+            "parallel_total_branches": None,
+            "last_error": "; ".join(errors) if errors else None,
+            "current_node": "ci_evaluator",
+        }
+    )
 
 
 def should_use_parallel_execution(state: WorkflowState) -> bool:

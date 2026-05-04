@@ -48,7 +48,6 @@ class SandboxConfig:
             network_mode=os.getenv("FORGE_SANDBOX_NETWORK", "slirp4netns"),
             skip_tests=os.getenv("FORGE_SANDBOX_SKIP_TESTS", "").lower() == "true",
             max_test_retries=int(os.getenv("FORGE_SANDBOX_MAX_RETRIES", "3")),
-            preserve_workspace_on_failure=os.getenv(
-                "FORGE_SANDBOX_PRESERVE_ON_FAILURE", ""
-            ).lower() == "true",
+            preserve_workspace_on_failure=os.getenv("FORGE_SANDBOX_PRESERVE_ON_FAILURE", "").lower()
+            == "true",
         )

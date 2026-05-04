@@ -137,9 +137,7 @@ class RateLimiter:
         wait_time = await bucket.acquire(tokens)
 
         if wait_time > 0:
-            logger.debug(
-                f"Rate limited for {service}: waiting {wait_time:.2f}s"
-            )
+            logger.debug(f"Rate limited for {service}: waiting {wait_time:.2f}s")
             await asyncio.sleep(wait_time)
 
     def configure(self, service: str, config: RateLimitConfig) -> None:
@@ -166,10 +164,7 @@ class RateLimiter:
             retry_after: Seconds to wait (from response header).
         """
         if retry_after:
-            logger.warning(
-                f"Rate limit hit for {service}: "
-                f"waiting {retry_after:.2f}s"
-            )
+            logger.warning(f"Rate limit hit for {service}: waiting {retry_after:.2f}s")
             await asyncio.sleep(retry_after)
         else:
             # Default backoff
@@ -205,10 +200,13 @@ async def rate_limited(
     Returns:
         Decorated function.
     """
+
     def decorator(func: Callable[..., T]) -> Callable[..., T]:
         async def wrapper(*args: Any, **kwargs: Any) -> T:
             limiter = get_rate_limiter()
             await limiter.acquire(service, tokens)
             return await func(*args, **kwargs)
+
         return wrapper
+
     return decorator

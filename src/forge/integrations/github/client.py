@@ -109,9 +109,7 @@ class GitHubClient:
         logger.info(f"Created PR #{data['number']} in {owner}/{repo}")
         return data
 
-    async def get_pull_request(
-        self, owner: str, repo: str, pr_number: int
-    ) -> dict[str, Any]:
+    async def get_pull_request(self, owner: str, repo: str, pr_number: int) -> dict[str, Any]:
         """Get pull request details.
 
         Args:
@@ -236,17 +234,17 @@ class GitHubClient:
                 if thread.get("isResolved") or thread.get("isOutdated"):
                     continue
                 for comment in thread.get("comments", {}).get("nodes", []):
-                    comments.append({
-                        "path": comment.get("path", ""),
-                        "position": comment.get("line") or comment.get("originalLine"),
-                        "body": comment.get("body", ""),
-                    })
+                    comments.append(
+                        {
+                            "path": comment.get("path", ""),
+                            "position": comment.get("line") or comment.get("originalLine"),
+                            "body": comment.get("body", ""),
+                        }
+                    )
             return comments
 
         except Exception as e:
-            logger.warning(
-                f"GraphQL review thread fetch failed, falling back to REST: {e}"
-            )
+            logger.warning(f"GraphQL review thread fetch failed, falling back to REST: {e}")
             # Fallback: REST API returns all comments (ignores resolved status)
             client = await self._get_client()
             response = await client.get(
@@ -279,9 +277,7 @@ class GitHubClient:
         logger.info(f"Created comment on issue #{issue_number}")
         return response.json()
 
-    async def get_check_runs(
-        self, owner: str, repo: str, ref: str
-    ) -> list[dict[str, Any]]:
+    async def get_check_runs(self, owner: str, repo: str, ref: str) -> list[dict[str, Any]]:
         """Get all CI results for a commit, combining check runs and commit statuses.
 
         GitHub has two CI APIs:
@@ -310,9 +306,7 @@ class GitHubClient:
 
         # --- Prow / commit-status API ---
         # Statuses are de-duplicated by context; latest entry per context wins.
-        statuses_response = await client.get(
-            f"/repos/{owner}/{repo}/commits/{ref}/statuses"
-        )
+        statuses_response = await client.get(f"/repos/{owner}/{repo}/commits/{ref}/statuses")
         statuses_response.raise_for_status()
         raw_statuses: list[dict[str, Any]] = statuses_response.json()
 
@@ -327,9 +321,7 @@ class GitHubClient:
 
         return results
 
-    async def get_workflow_run_logs(
-        self, owner: str, repo: str, run_id: int
-    ) -> str:
+    async def get_workflow_run_logs(self, owner: str, repo: str, run_id: int) -> str:
         """Download workflow run logs.
 
         Args:
@@ -388,9 +380,7 @@ class GitHubClient:
         response.raise_for_status()
         return response.json().get("artifacts", [])
 
-    async def download_artifact_zip(
-        self, owner: str, repo: str, artifact_id: int | str
-    ) -> bytes:
+    async def download_artifact_zip(self, owner: str, repo: str, artifact_id: int | str) -> bytes:
         """Download an artifact as a zip archive.
 
         Args:
@@ -424,9 +414,7 @@ class GitHubClient:
         response.raise_for_status()
         return response.json()
 
-    async def get_failed_check_logs(
-        self, owner: str, repo: str, ref: str
-    ) -> list[dict[str, Any]]:
+    async def get_failed_check_logs(self, owner: str, repo: str, ref: str) -> list[dict[str, Any]]:
         """Get logs for failed check runs.
 
         Args:
@@ -442,12 +430,14 @@ class GitHubClient:
 
         for check in check_runs:
             if check.get("conclusion") in ("failure", "cancelled"):
-                failed_checks.append({
-                    "name": check.get("name"),
-                    "conclusion": check.get("conclusion"),
-                    "output": check.get("output", {}),
-                    "html_url": check.get("html_url"),
-                })
+                failed_checks.append(
+                    {
+                        "name": check.get("name"),
+                        "conclusion": check.get("conclusion"),
+                        "output": check.get("output", {}),
+                        "html_url": check.get("html_url"),
+                    }
+                )
 
         return failed_checks
 
@@ -536,8 +526,10 @@ class GitHubClient:
             # Verify this is actually a fork of the upstream repo
             if repo_data.get("fork"):
                 parent = repo_data.get("parent", {})
-                if (parent.get("owner", {}).get("login") == upstream_owner
-                        and parent.get("name") == upstream_repo):
+                if (
+                    parent.get("owner", {}).get("login") == upstream_owner
+                    and parent.get("name") == upstream_repo
+                ):
                     return repo_data
 
             return None
@@ -577,9 +569,7 @@ class GitHubClient:
         )
         response.raise_for_status()
         fork_data = response.json()
-        logger.info(
-            f"Created fork {fork_data['full_name']} from {upstream_owner}/{upstream_repo}"
-        )
+        logger.info(f"Created fork {fork_data['full_name']} from {upstream_owner}/{upstream_repo}")
         return fork_data
 
     async def get_or_create_fork(
@@ -644,9 +634,7 @@ class GitHubClient:
             except Exception:
                 pass
 
-            logger.debug(
-                f"Waiting for fork {fork_owner_actual}/{fork_name} to be ready..."
-            )
+            logger.debug(f"Waiting for fork {fork_owner_actual}/{fork_name} to be ready...")
 
     async def sync_fork_with_upstream(
         self,

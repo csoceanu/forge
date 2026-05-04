@@ -290,10 +290,9 @@ class OrchestratorWorker:
             event = message.event_type
             is_check_event = "check_suite" in event or "check_run" in event
             if is_check_event:
-                suite_status = (
-                    payload.get("check_suite", {}).get("status")
-                    or payload.get("check_run", {}).get("check_suite", {}).get("status")
-                )
+                suite_status = payload.get("check_suite", {}).get("status") or payload.get(
+                    "check_run", {}
+                ).get("check_suite", {}).get("status")
                 if suite_status and suite_status != "completed":
                     logger.info(
                         f"Ignoring {event} for {message.ticket_key}: "

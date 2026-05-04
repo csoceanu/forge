@@ -383,7 +383,11 @@ class ContainerRunner:
                 logger.warning(f"Container execution cancelled, stopping {container_name}")
                 # Stop the container via podman (more reliable than killing process)
                 stop_process = await asyncio.create_subprocess_exec(
-                    "podman", "stop", "-t", "10", container_name,
+                    "podman",
+                    "stop",
+                    "-t",
+                    "10",
+                    container_name,
                     stdout=asyncio.subprocess.DEVNULL,
                     stderr=asyncio.subprocess.DEVNULL,
                 )
@@ -392,7 +396,9 @@ class ContainerRunner:
                 except TimeoutError:
                     logger.warning(f"Container {container_name} didn't stop, killing")
                     kill_process = await asyncio.create_subprocess_exec(
-                        "podman", "kill", container_name,
+                        "podman",
+                        "kill",
+                        container_name,
                         stdout=asyncio.subprocess.DEVNULL,
                         stderr=asyncio.subprocess.DEVNULL,
                     )

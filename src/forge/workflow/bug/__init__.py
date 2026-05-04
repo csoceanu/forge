@@ -19,14 +19,13 @@ class BugWorkflow(BaseWorkflow):
     def state_schema(self) -> type:
         return BugState
 
-    def matches(
-        self, ticket_type: TicketType, _labels: list[str], _event: dict[str, Any]
-    ) -> bool:
+    def matches(self, ticket_type: TicketType, _labels: list[str], _event: dict[str, Any]) -> bool:
         return ticket_type == TicketType.BUG
 
     def build_graph(self) -> StateGraph:
         # Lazy import to avoid circular dependency
         from forge.workflow.bug.graph import build_bug_graph
+
         return build_bug_graph()
 
     def create_initial_state(self, ticket_key: str, **kwargs: Any) -> BugState:

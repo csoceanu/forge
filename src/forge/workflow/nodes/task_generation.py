@@ -66,11 +66,13 @@ async def generate_tasks(state: WorkflowState) -> WorkflowState:
         for ek in epic_keys:
             try:
                 epic_issue = await jira.get_issue(ek)
-                all_epics_details.append({
-                    "epic_key": ek,
-                    "epic_summary": epic_issue.summary,
-                    "epic_plan": epic_issue.description or "",
-                })
+                all_epics_details.append(
+                    {
+                        "epic_key": ek,
+                        "epic_summary": epic_issue.summary,
+                        "epic_plan": epic_issue.description or "",
+                    }
+                )
             except Exception as e:
                 logger.warning(f"Failed to pre-fetch Epic {ek}: {e}")
                 all_epics_details.append({"epic_key": ek, "epic_summary": ek, "epic_plan": ""})
@@ -109,7 +111,10 @@ async def generate_tasks(state: WorkflowState) -> WorkflowState:
 
             # Generate Tasks using Deep Agents - primary operation
             tasks_data = await _generate_tasks_for_epic(
-                agent, epic_plan, epic_summary, context,
+                agent,
+                epic_plan,
+                epic_summary,
+                context,
                 spec_content=spec_content,
                 sibling_epics=sibling_epics if sibling_epics else None,
                 existing_tasks=created_tasks_context if created_tasks_context else None,
@@ -160,24 +165,23 @@ async def generate_tasks(state: WorkflowState) -> WorkflowState:
                     tasks_by_repo[repo].append(task_key)
 
                     # Track for context in subsequent epic task generation
-                    created_tasks_context.append({
-                        "epic_key": epic_key,
-                        "epic_summary": epic_summary,
-                        "task_key": task_key,
-                        "summary": summary,
-                    })
+                    created_tasks_context.append(
+                        {
+                            "epic_key": epic_key,
+                            "epic_summary": epic_summary,
+                            "task_key": task_key,
+                            "summary": summary,
+                        }
+                    )
 
                     logger.info(f"Created Task {task_key}: {summary} (repo: {repo})")
                 except Exception as e:
                     # Log but continue creating remaining Tasks
                     jira_error = str(e)
-                    logger.warning(
-                        f"Failed to create Task '{summary}' for {ticket_key}: {e}"
-                    )
+                    logger.warning(f"Failed to create Task '{summary}' for {ticket_key}: {e}")
 
         logger.info(
-            f"Created {len(all_task_keys)} Tasks for {ticket_key}, "
-            "awaiting implementation approval"
+            f"Created {len(all_task_keys)} Tasks for {ticket_key}, awaiting implementation approval"
         )
 
         # If we created some Tasks, advance even with partial failures
@@ -188,13 +192,15 @@ async def generate_tasks(state: WorkflowState) -> WorkflowState:
             except Exception as e:
                 jira_error = str(e)
                 logger.warning(f"Failed to set workflow label for {ticket_key}: {e}")
-            return update_state_timestamp({
-                **state,
-                "task_keys": all_task_keys,
-                "tasks_by_repo": tasks_by_repo,
-                "current_node": "task_approval_gate",
-                "last_error": f"Partial Jira failure: {jira_error}" if jira_error else None,
-            })
+            return update_state_timestamp(
+                {
+                    **state,
+                    "task_keys": all_task_keys,
+                    "tasks_by_repo": tasks_by_repo,
+                    "current_node": "task_approval_gate",
+                    "last_error": f"Partial Jira failure: {jira_error}" if jira_error else None,
+                }
+            )
         else:
             # No Tasks created at all - this is a failure
             return {
@@ -207,6 +213,7 @@ async def generate_tasks(state: WorkflowState) -> WorkflowState:
     except Exception as e:
         logger.error(f"Task generation failed for {ticket_key}: {e}")
         from forge.workflow.nodes.error_handler import notify_error
+
         await notify_error(state, str(e), "generate_tasks")
         # Save any Tasks we managed to create
         result_state = {
@@ -350,8 +357,9 @@ def _parse_tasks_response(response: str) -> list[dict[str, str]]:
                     # Append acceptance criteria to description
                     criteria = "\n".join(section_lines).strip()
                     current_task["description"] = (
-                        current_task.get("description", "") +
-                        "\n\nAcceptance Criteria:\n" + criteria
+                        current_task.get("description", "")
+                        + "\n\nAcceptance Criteria:\n"
+                        + criteria
                     ).strip()
                 tasks.append(current_task)
                 current_task = {}
@@ -364,7 +372,7 @@ def _parse_tasks_response(response: str) -> list[dict[str, str]]:
         elif stripped.startswith("REPO:"):
             repo = stripped[5:].strip().lower()
             # Clean up repo name
-            repo = re.sub(r'[^a-z0-9\-_]', '', repo)
+            repo = re.sub(r"[^a-z0-9\-_]", "", repo)
             current_task["repo"] = repo if repo else "unknown"
         elif stripped.startswith("DESCRIPTION:"):
             current_section = "description"
@@ -385,8 +393,7 @@ def _parse_tasks_response(response: str) -> list[dict[str, str]]:
         elif current_section == "acceptance_criteria":
             criteria = "\n".join(section_lines).strip()
             current_task["description"] = (
-                current_task.get("description", "") +
-                "\n\nAcceptance Criteria:\n" + criteria
+                current_task.get("description", "") + "\n\nAcceptance Criteria:\n" + criteria
             ).strip()
         tasks.append(current_task)
 
@@ -451,6 +458,7 @@ async def regenerate_all_tasks(state: WorkflowState) -> WorkflowState:
     except Exception as e:
         logger.error(f"Task regeneration failed for {ticket_key}: {e}")
         from forge.workflow.nodes.error_handler import notify_error
+
         await notify_error(state, str(e), "regenerate_all_tasks")
         return {
             **state,
@@ -478,9 +486,7 @@ async def update_single_task(state: WorkflowState) -> WorkflowState:
     feedback = state.get("feedback_comment", "")
 
     if not task_key:
-        logger.warning(
-            f"No current_task_key for single Task update on {ticket_key}"
-        )
+        logger.warning(f"No current_task_key for single Task update on {ticket_key}")
         return state
 
     logger.info(f"Updating Task {task_key} with feedback")
@@ -512,18 +518,21 @@ async def update_single_task(state: WorkflowState) -> WorkflowState:
 
         logger.info(f"Task {task_key} updated with feedback")
 
-        return update_state_timestamp({
-            **state,
-            "current_task_key": None,
-            "feedback_comment": None,
-            "revision_requested": False,
-            "current_node": "task_approval_gate",
-            "last_error": None,
-        })
+        return update_state_timestamp(
+            {
+                **state,
+                "current_task_key": None,
+                "feedback_comment": None,
+                "revision_requested": False,
+                "current_node": "task_approval_gate",
+                "last_error": None,
+            }
+        )
 
     except Exception as e:
         logger.error(f"Task update failed for {task_key}: {e}")
         from forge.workflow.nodes.error_handler import notify_error
+
         await notify_error(state, str(e), "update_single_task")
         return {
             **state,

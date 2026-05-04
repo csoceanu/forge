@@ -53,7 +53,7 @@ def calculate_delay(
     Returns:
         Delay in seconds.
     """
-    delay = config.initial_delay * (config.exponential_base ** attempt)
+    delay = config.initial_delay * (config.exponential_base**attempt)
     delay = min(delay, config.max_delay)
 
     if config.jitter:
@@ -102,8 +102,7 @@ async def retry_async(
                 await asyncio.sleep(delay)
             else:
                 logger.error(
-                    f"All {config.max_attempts} retry attempts exhausted "
-                    f"for {func.__name__}: {e}"
+                    f"All {config.max_attempts} retry attempts exhausted for {func.__name__}: {e}"
                 )
 
     if last_exception:
@@ -124,6 +123,7 @@ def with_retry(
     Returns:
         Decorated function.
     """
+
     def decorator(func: Callable[..., T]) -> Callable[..., T]:
         @wraps(func)
         async def wrapper(*args: Any, **kwargs: Any) -> T:
@@ -138,7 +138,9 @@ def with_retry(
                     retryable_exceptions=tuple(retryable_exceptions),
                 )
             return await retry_async(func, *args, config=retry_config, **kwargs)
+
         return wrapper
+
     return decorator
 
 

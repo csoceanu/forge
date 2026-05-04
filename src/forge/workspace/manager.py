@@ -129,8 +129,7 @@ class WorkspaceManager:
             Number of workspaces destroyed.
         """
         to_destroy = [
-            ws for ws_id, ws in self._workspaces.items()
-            if ws_id.startswith(f"{ticket_key}:")
+            ws for ws_id, ws in self._workspaces.items() if ws_id.startswith(f"{ticket_key}:")
         ]
 
         for workspace in to_destroy:
@@ -174,10 +173,7 @@ class WorkspaceManager:
         Returns:
             List of active Workspace instances.
         """
-        return [
-            ws for ws in self._workspaces.values()
-            if ws.is_active and ws.path.exists()
-        ]
+        return [ws for ws in self._workspaces.values() if ws.is_active and ws.path.exists()]
 
     def workspace_exists(self, ticket_key: str, repo_name: str) -> bool:
         """Check if a workspace exists and is active.

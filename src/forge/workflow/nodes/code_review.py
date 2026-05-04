@@ -118,7 +118,8 @@ async def sync_pr_description(
 
     try:
         commit_log = git._run_git(
-            "log", "origin/main..HEAD",
+            "log",
+            "origin/main..HEAD",
             "--pretty=format:%s%n%b",
             "--no-merges",
             check=False,

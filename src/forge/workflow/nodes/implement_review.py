@@ -45,9 +45,7 @@ def route_review_response(state: WorkflowState) -> str:
     return "human_review_gate"
 
 
-async def _fetch_pr_review_comments(
-    owner: str, repo: str, pr_number: int, review_body: str
-) -> str:
+async def _fetch_pr_review_comments(owner: str, repo: str, pr_number: int, review_body: str) -> str:
     """Fetch all PR review comments and format them for the analysis container.
 
     Combines the review summary body with all inline review comments so the
@@ -64,9 +62,7 @@ async def _fetch_pr_review_comments(
     """
     github = GitHubClient()
     try:
-        inline_comments = await github.get_pull_request_review_comments(
-            owner, repo, pr_number
-        )
+        inline_comments = await github.get_pull_request_review_comments(owner, repo, pr_number)
     except Exception as e:
         logger.warning(f"Could not fetch inline review comments: {e}")
         inline_comments = []
@@ -129,11 +125,13 @@ async def implement_review(state: WorkflowState) -> WorkflowState:
             workspace_path, git = prepare_workspace(state)
             state = {**state, "workspace_path": workspace_path}
         except ValueError as e:
-            return update_state_timestamp({
-                **state,
-                "last_error": str(e),
-                "current_node": "implement_review",
-            })
+            return update_state_timestamp(
+                {
+                    **state,
+                    "last_error": str(e),
+                    "current_node": "implement_review",
+                }
+            )
 
         # ── Phase 0: Fetch all PR review comments from GitHub ─────────────────
         _owner, _, _repo = current_repo.partition("/")
@@ -184,12 +182,14 @@ async def implement_review(state: WorkflowState) -> WorkflowState:
                     repo=_repo,
                     pr_number=pr_number,
                 )
-                return update_state_timestamp({
-                    **state,
-                    "review_response_posted": True,
-                    "contested_comments": [{"text": objections_text}],
-                    "current_node": "review_response_gate",
-                })
+                return update_state_timestamp(
+                    {
+                        **state,
+                        "review_response_posted": True,
+                        "contested_comments": [{"text": objections_text}],
+                        "current_node": "review_response_gate",
+                    }
+                )
 
         # ── Phase 2: Implementation container ────────────────────────────────
         # Only runs if the analysis produced actionable items.
@@ -246,26 +246,32 @@ async def implement_review(state: WorkflowState) -> WorkflowState:
             logger.info(f"Review implementation pushed for {ticket_key}")
 
             await sync_pr_description(
-                state, git,
-                owner=_owner, repo=_repo,
-                pr_number=pr_number, attempt=0,
+                state,
+                git,
+                owner=_owner,
+                repo=_repo,
+                pr_number=pr_number,
+                attempt=0,
             )
         else:
             logger.info(f"No new commits after review implementation for {ticket_key}")
 
-        return update_state_timestamp({
-            **state,
-            "revision_requested": False,
-            "feedback_comment": None,
-            "review_response_posted": False,
-            "contested_comments": [],
-            "current_node": "wait_for_ci_gate",
-            "last_error": None,
-        })
+        return update_state_timestamp(
+            {
+                **state,
+                "revision_requested": False,
+                "feedback_comment": None,
+                "review_response_posted": False,
+                "contested_comments": [],
+                "current_node": "wait_for_ci_gate",
+                "last_error": None,
+            }
+        )
 
     except Exception as e:
         logger.error(f"implement_review failed for {ticket_key}: {e}")
         from forge.workflow.nodes.error_handler import notify_error
+
         await notify_error(state, str(e), "implement_review")
         return {
             **state,
@@ -298,7 +304,7 @@ async def _post_review_objection(
             await jira.add_comment(
                 ticket_key,
                 f"Forge has concerns about the PR review feedback. "
-                f"Objection posted on PR #{pr_number}. Awaiting confirmation."
+                f"Objection posted on PR #{pr_number}. Awaiting confirmation.",
             )
         finally:
             await github.close()

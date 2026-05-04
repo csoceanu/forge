@@ -68,9 +68,7 @@ def get_langfuse_handler(
         return handler
 
     except ImportError:
-        logger.warning(
-            "langfuse package not installed. Install with: pip install langfuse"
-        )
+        logger.warning("langfuse package not installed. Install with: pip install langfuse")
         return None
     except Exception as e:
         logger.error(f"Failed to initialize Langfuse handler: {e}")

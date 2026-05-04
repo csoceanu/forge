@@ -21,17 +21,12 @@ async def post_qa_summary_if_needed(
         artifact_type: Type of artifact that was approved (prd, spec, etc).
     """
     # Filter Q&A for this artifact type
-    relevant_qa = [
-        qa for qa in qa_history
-        if qa.get("artifact_type") == artifact_type
-    ]
+    relevant_qa = [qa for qa in qa_history if qa.get("artifact_type") == artifact_type]
 
     if not relevant_qa:
         return
 
-    logger.info(
-        f"Posting Q&A summary for {ticket_key} ({len(relevant_qa)} exchanges)"
-    )
+    logger.info(f"Posting Q&A summary for {ticket_key} ({len(relevant_qa)} exchanges)")
 
     jira = JiraClient()
     try:

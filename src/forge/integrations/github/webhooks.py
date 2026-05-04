@@ -198,10 +198,7 @@ def is_ci_success(data: GitHubWebhookData) -> bool:
     Returns:
         True if CI has passed.
     """
-    return (
-        data.check_status == "completed"
-        and data.check_conclusion == "success"
-    )
+    return data.check_status == "completed" and data.check_conclusion == "success"
 
 
 def is_ci_failure(data: GitHubWebhookData) -> bool:
@@ -213,9 +210,10 @@ def is_ci_failure(data: GitHubWebhookData) -> bool:
     Returns:
         True if CI has failed.
     """
-    return (
-        data.check_status == "completed"
-        and data.check_conclusion in ("failure", "cancelled", "timed_out")
+    return data.check_status == "completed" and data.check_conclusion in (
+        "failure",
+        "cancelled",
+        "timed_out",
     )
 
 

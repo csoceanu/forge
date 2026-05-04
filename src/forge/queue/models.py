@@ -55,9 +55,7 @@ class QueueMessage:
             event_type=data.get("event_type", ""),
             ticket_key=data.get("ticket_key", ""),
             payload=json.loads(data.get("payload", "{}")),
-            timestamp=datetime.fromisoformat(
-                data.get("timestamp", datetime.utcnow().isoformat())
-            ),
+            timestamp=datetime.fromisoformat(data.get("timestamp", datetime.utcnow().isoformat())),
             retry_count=int(data.get("retry_count", "0")),
         )
 

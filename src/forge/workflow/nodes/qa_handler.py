@@ -86,25 +86,29 @@ async def answer_question(state: WorkflowState) -> WorkflowState:
 
         # Record in Q&A history
         qa_history = list(state.get("qa_history", []))
-        qa_history.append({
-            "question": question,
-            "answer": answer,
-            "artifact_type": artifact_type,
-            "timestamp": datetime.now(UTC).isoformat(),
-        })
+        qa_history.append(
+            {
+                "question": question,
+                "answer": answer,
+                "artifact_type": artifact_type,
+                "timestamp": datetime.now(UTC).isoformat(),
+            }
+        )
 
         logger.info(f"Answered question for {ticket_key}")
 
         # Stay at current gate, remain paused
-        return update_state_timestamp({
-            **state,
-            "qa_history": qa_history,
-            "feedback_comment": None,
-            "is_question": False,
-            "revision_requested": False,
-            "is_paused": True,
-            "current_node": current_node,
-        })
+        return update_state_timestamp(
+            {
+                **state,
+                "qa_history": qa_history,
+                "feedback_comment": None,
+                "is_question": False,
+                "revision_requested": False,
+                "is_paused": True,
+                "current_node": current_node,
+            }
+        )
 
     except Exception as e:
         logger.error(f"Failed to answer question for {ticket_key}: {e}")
@@ -115,14 +119,16 @@ async def answer_question(state: WorkflowState) -> WorkflowState:
                 "Please try rephrasing or ask a different question.",
             )
 
-        return update_state_timestamp({
-            **state,
-            "feedback_comment": None,
-            "is_question": False,
-            "revision_requested": False,
-            "is_paused": True,
-            "current_node": current_node,
-        })
+        return update_state_timestamp(
+            {
+                **state,
+                "feedback_comment": None,
+                "is_question": False,
+                "revision_requested": False,
+                "is_paused": True,
+                "current_node": current_node,
+            }
+        )
     finally:
         await jira.close()
         await agent.close()

@@ -74,8 +74,6 @@ def route_prd_approval(state: WorkflowState) -> str:
         return END
 
     # PRD was approved, proceed to spec generation
-    logger.info(
-        f"PRD approved for {state['ticket_key']}, proceeding to spec generation"
-    )
+    logger.info(f"PRD approved for {state['ticket_key']}, proceeding to spec generation")
     record_approval("prd")
     return "generate_spec"

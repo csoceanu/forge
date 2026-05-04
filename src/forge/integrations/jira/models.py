@@ -84,9 +84,7 @@ class JiraIssue:
             updated = datetime.fromisoformat(fields["updated"].replace("Z", "+00:00"))
 
         # Collect custom fields
-        custom_fields = {
-            k: v for k, v in fields.items() if k.startswith("customfield_")
-        }
+        custom_fields = {k: v for k, v in fields.items() if k.startswith("customfield_")}
 
         # Extract reporter and assignee
         reporter = JiraUser.from_api_response(fields.get("reporter"))

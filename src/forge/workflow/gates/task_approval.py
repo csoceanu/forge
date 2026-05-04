@@ -97,10 +97,7 @@ def route_task_approval(state: WorkflowState) -> str:
             return "update_single_task"
         elif feedback:
             # Feature-level regeneration - comment was on Feature
-            logger.info(
-                f"Full Task regeneration requested for {ticket_key}: "
-                f"{feedback[:100]}..."
-            )
+            logger.info(f"Full Task regeneration requested for {ticket_key}: {feedback[:100]}...")
             record_revision_requested("task")
             return "regenerate_all_tasks"
 
@@ -113,8 +110,6 @@ def route_task_approval(state: WorkflowState) -> str:
         return END
 
     # Tasks approved, proceed to implementation
-    logger.info(
-        f"Tasks approved for {ticket_key}, proceeding to implementation"
-    )
+    logger.info(f"Tasks approved for {ticket_key}, proceeding to implementation")
     record_approval("task")
     return "task_router"

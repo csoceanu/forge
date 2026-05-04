@@ -24,10 +24,7 @@ def human_review_gate(state: WorkflowState) -> WorkflowState:
     ticket_key = state["ticket_key"]
     pr_urls = state.get("pr_urls", [])
 
-    logger.info(
-        f"Human review gate: pausing for {ticket_key} "
-        f"({len(pr_urls)} PRs)"
-    )
+    logger.info(f"Human review gate: pausing for {ticket_key} ({len(pr_urls)} PRs)")
 
     return set_paused(state, "human_review_gate")
 
@@ -53,7 +50,9 @@ def route_human_review(state: WorkflowState) -> str:
 
     # Still waiting for review - END and wait for webhook
     if state.get("is_paused"):
-        logger.info(f"Human review: workflow paused for {state['ticket_key']}, waiting for review webhook")
+        logger.info(
+            f"Human review: workflow paused for {state['ticket_key']}, waiting for review webhook"
+        )
         return END
 
     return "complete_tasks"
@@ -73,9 +72,7 @@ async def complete_tasks(state: WorkflowState) -> WorkflowState:
     ticket_key = state["ticket_key"]
     implemented_tasks = state.get("implemented_tasks", [])
 
-    logger.info(
-        f"Completing {len(implemented_tasks)} Tasks for {ticket_key}"
-    )
+    logger.info(f"Completing {len(implemented_tasks)} Tasks for {ticket_key}")
 
     jira = JiraClient()
 
@@ -89,11 +86,13 @@ async def complete_tasks(state: WorkflowState) -> WorkflowState:
             except Exception as e:
                 logger.warning(f"Failed to complete Task {task_key}: {e}")
 
-        return update_state_timestamp({
-            **state,
-            "tasks_completed": True,
-            "current_node": "aggregate_epic_status",
-        })
+        return update_state_timestamp(
+            {
+                **state,
+                "tasks_completed": True,
+                "current_node": "aggregate_epic_status",
+            }
+        )
 
     except Exception as e:
         logger.error(f"Task completion failed for {ticket_key}: {e}")
@@ -139,16 +138,20 @@ async def aggregate_epic_status(state: WorkflowState) -> WorkflowState:
                 all_epics_done = False
 
         if all_epics_done:
-            return update_state_timestamp({
-                **state,
-                "epics_completed": True,
-                "current_node": "aggregate_feature_status",
-            })
+            return update_state_timestamp(
+                {
+                    **state,
+                    "epics_completed": True,
+                    "current_node": "aggregate_feature_status",
+                }
+            )
 
-        return update_state_timestamp({
-            **state,
-            "current_node": "complete",
-        })
+        return update_state_timestamp(
+            {
+                **state,
+                "current_node": "complete",
+            }
+        )
 
     except Exception as e:
         logger.error(f"Epic aggregation failed for {ticket_key}: {e}")
@@ -184,17 +187,18 @@ async def aggregate_feature_status(state: WorkflowState) -> WorkflowState:
 
         # Add completion comment
         await jira.add_comment(
-            ticket_key,
-            "All Epics and Tasks completed. Feature implementation done."
+            ticket_key, "All Epics and Tasks completed. Feature implementation done."
         )
 
-        return update_state_timestamp({
-            **state,
-            "feature_completed": True,
-            "current_node": "complete",
-            "generation_context": {},  # Clear - no longer needed
-            "qa_history": [],  # Clear - already posted as summary
-        })
+        return update_state_timestamp(
+            {
+                **state,
+                "feature_completed": True,
+                "current_node": "complete",
+                "generation_context": {},  # Clear - no longer needed
+                "qa_history": [],  # Clear - already posted as summary
+            }
+        )
 
     except Exception as e:
         logger.error(f"Feature completion failed for {ticket_key}: {e}")
@@ -227,10 +231,7 @@ async def _check_epic_completion(jira: JiraClient, epic_key: str) -> bool:
             return True
 
         done_statuses = {"Done", "Closed", "Resolved"}
-        incomplete = [
-            child for child in children
-            if child.status not in done_statuses
-        ]
+        incomplete = [child for child in children if child.status not in done_statuses]
 
         if incomplete:
             logger.info(

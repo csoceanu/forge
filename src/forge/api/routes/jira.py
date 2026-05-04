@@ -125,9 +125,7 @@ async def receive_jira_webhook(
         if not has_forge_managed:
             span.set_attribute("forge.skipped", True)
             span.set_attribute("forge.skip_reason", "missing forge:managed label")
-            logger.debug(
-                f"Skipping {webhook_data.ticket_key}: missing forge:managed label"
-            )
+            logger.debug(f"Skipping {webhook_data.ticket_key}: missing forge:managed label")
             return {
                 "status": "skipped",
                 "event_id": event_id,
@@ -136,12 +134,7 @@ async def receive_jira_webhook(
             }
 
         # Check if this is a child ticket (Epic/Task) - route to parent Feature
-        issue_type = (
-            payload.get("issue", {})
-            .get("fields", {})
-            .get("issuetype", {})
-            .get("name", "")
-        )
+        issue_type = payload.get("issue", {}).get("fields", {}).get("issuetype", {}).get("name", "")
         routing_ticket_key = webhook_data.ticket_key
         source_ticket_key = None
 
@@ -242,11 +235,14 @@ def _verify_jira_signature(payload: bytes, signature: str, secret: str) -> bool:
     if not signature:
         return False
 
-    expected = "sha256=" + hmac.new(
-        secret.encode("utf-8"),
-        payload,
-        hashlib.sha256,
-    ).hexdigest()
+    expected = (
+        "sha256="
+        + hmac.new(
+            secret.encode("utf-8"),
+            payload,
+            hashlib.sha256,
+        ).hexdigest()
+    )
 
     return hmac.compare_digest(signature, expected)
 
@@ -261,6 +257,7 @@ def _generate_event_id(payload: dict[str, Any]) -> str:
         SHA256-based event ID.
     """
     import json
+
     content = json.dumps(payload, sort_keys=True)
     return hashlib.sha256(content.encode()).hexdigest()[:16]
 

@@ -109,7 +109,10 @@ PHASE_DURATION = Histogram(
 EXTERNAL_API_LATENCY = Histogram(
     "forge_external_api_latency_seconds",
     "Latency of external API calls",
-    ["service", "operation"],  # service: jira, github, claude; operation: get_issue, create_pr, etc.
+    [
+        "service",
+        "operation",
+    ],  # service: jira, github, claude; operation: get_issue, create_pr, etc.
     buckets=[0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0, 30.0],
 )
 
@@ -228,6 +231,4 @@ def record_external_api_error(service: str, operation: str, error_type: str) -> 
         operation: Operation name.
         error_type: Type of error (timeout, rate_limit, auth, etc.).
     """
-    EXTERNAL_API_ERRORS.labels(
-        service=service, operation=operation, error_type=error_type
-    ).inc()
+    EXTERNAL_API_ERRORS.labels(service=service, operation=operation, error_type=error_type).inc()

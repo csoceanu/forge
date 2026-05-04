@@ -99,11 +99,13 @@ async def create_pull_request(state: WorkflowState) -> WorkflowState:
 
     if not implemented_tasks:
         logger.warning(f"No tasks implemented for {ticket_key}")
-        return update_state_timestamp({
-            **state,
-            "current_node": "teardown_workspace",
-            "last_error": None,
-        })
+        return update_state_timestamp(
+            {
+                **state,
+                "current_node": "teardown_workspace",
+                "last_error": None,
+            }
+        )
 
     logger.info(f"Creating PR for {ticket_key} ({len(implemented_tasks)} tasks)")
 
@@ -140,9 +142,7 @@ async def create_pull_request(state: WorkflowState) -> WorkflowState:
         has_conflicts, conflicting_files = await check_merge_conflicts(git, "main")
 
         if has_conflicts:
-            logger.warning(
-                f"Merge conflicts detected for {ticket_key}: {conflicting_files}"
-            )
+            logger.warning(f"Merge conflicts detected for {ticket_key}: {conflicting_files}")
 
             # Transition to blocked status
             await jira.set_workflow_label(ticket_key, ForgeLabel.BLOCKED)
@@ -152,15 +152,17 @@ async def create_pull_request(state: WorkflowState) -> WorkflowState:
                 "Cannot create PR due to merge conflicts with main branch.\n\n"
                 "**Conflicting files:**\n"
                 + "\n".join(f"- `{f}`" for f in conflicting_files)
-                + "\n\n*Human intervention required to resolve conflicts.*"
+                + "\n\n*Human intervention required to resolve conflicts.*",
             )
 
-            return update_state_timestamp({
-                **state,
-                "current_node": "blocked",
-                "last_error": f"Merge conflicts: {conflicting_files}",
-                "merge_conflicts": conflicting_files,
-            })
+            return update_state_timestamp(
+                {
+                    **state,
+                    "current_node": "blocked",
+                    "last_error": f"Merge conflicts: {conflicting_files}",
+                    "merge_conflicts": conflicting_files,
+                }
+            )
 
         # Push branch to fork (not origin)
         git.push_to_fork()
@@ -175,9 +177,7 @@ async def create_pull_request(state: WorkflowState) -> WorkflowState:
         pr_title = f"[{ticket_key}] {_get_pr_title(state, ticket_summary)}"
 
         # Generate PR body with agent, fall back to template if it fails
-        pr_body = await _generate_pr_body_with_agent(
-            state, git, jira, implemented_tasks
-        )
+        pr_body = await _generate_pr_body_with_agent(state, git, jira, implemented_tasks)
         if not pr_body:
             pr_body = _build_pr_body(state, implemented_tasks)
 
@@ -202,8 +202,7 @@ async def create_pull_request(state: WorkflowState) -> WorkflowState:
         # Add comment to Jira with PR link
         await jira.add_comment(
             ticket_key,
-            f"Pull request created: {pr_url}\n\n"
-            f"Implements {len(implemented_tasks)} tasks.",
+            f"Pull request created: {pr_url}\n\nImplements {len(implemented_tasks)} tasks.",
         )
 
         # Add remote link so the poller can discover the PR
@@ -213,25 +212,31 @@ async def create_pull_request(state: WorkflowState) -> WorkflowState:
 
         # Sync description to catch any inaccuracies from local_review commits
         await sync_pr_description(
-            state, git,
-            owner=owner, repo=repo,
-            pr_number=pr_number, attempt=0,
+            state,
+            git,
+            owner=owner,
+            repo=repo,
+            pr_number=pr_number,
+            attempt=0,
         )
 
-        return update_state_timestamp({
-            **state,
-            "pr_urls": pr_urls,
-            "current_pr_url": pr_url,
-            "current_pr_number": pr_number,
-            "fork_owner": fork_owner,
-            "fork_repo": fork_repo,
-            "current_node": "teardown_workspace",
-            "last_error": None,
-        })
+        return update_state_timestamp(
+            {
+                **state,
+                "pr_urls": pr_urls,
+                "current_pr_url": pr_url,
+                "current_pr_number": pr_number,
+                "fork_owner": fork_owner,
+                "fork_repo": fork_repo,
+                "current_node": "teardown_workspace",
+                "last_error": None,
+            }
+        )
 
     except Exception as e:
         logger.error(f"PR creation failed for {ticket_key}: {e}")
         from forge.workflow.nodes.error_handler import notify_error
+
         await notify_error(state, str(e), "create_pr")
         return {
             **state,
@@ -275,7 +280,9 @@ def _build_pr_body(
     jira_base_url = settings.jira_base_url.rstrip("/")
 
     # Build Jira link if we have the base URL
-    ticket_link = f"[{ticket_key}]({jira_base_url}/browse/{ticket_key})" if jira_base_url else ticket_key
+    ticket_link = (
+        f"[{ticket_key}]({jira_base_url}/browse/{ticket_key})" if jira_base_url else ticket_key
+    )
 
     body_parts = [
         "## Summary",
@@ -287,17 +294,21 @@ def _build_pr_body(
     # Add feature summary if available
     feature_summary = context.get("feature_summary", "")
     if feature_summary:
-        body_parts.extend([
-            "### Overview",
-            "",
-            feature_summary,
-            "",
-        ])
+        body_parts.extend(
+            [
+                "### Overview",
+                "",
+                feature_summary,
+                "",
+            ]
+        )
 
-    body_parts.extend([
-        "## Tasks Implemented",
-        "",
-    ])
+    body_parts.extend(
+        [
+            "## Tasks Implemented",
+            "",
+        ]
+    )
 
     # Link each task to Jira
     for task_key in implemented_tasks:
@@ -306,16 +317,18 @@ def _build_pr_body(
         else:
             body_parts.append(f"- [x] {task_key}")
 
-    body_parts.extend([
-        "",
-        "## Testing",
-        "",
-        "- [ ] CI checks pass",
-        "- [ ] Code review approved",
-        "",
-        "---",
-        "*Generated by [Forge](https://github.com/eshulman2/forge) SDLC Orchestrator*",
-    ])
+    body_parts.extend(
+        [
+            "",
+            "## Testing",
+            "",
+            "- [ ] CI checks pass",
+            "- [ ] Code review approved",
+            "",
+            "---",
+            "*Generated by [Forge](https://github.com/eshulman2/forge) SDLC Orchestrator*",
+        ]
+    )
 
     return "\n".join(body_parts)
 
@@ -348,10 +361,7 @@ async def _generate_pr_body_with_agent(
     try:
         # Get commit log from the branch
         commit_log = git._run_git(
-            "log", "origin/main..HEAD",
-            "--pretty=format:%h %s%n%b",
-            "--no-merges",
-            check=False
+            "log", "origin/main..HEAD", "--pretty=format:%h %s%n%b", "--no-merges", check=False
         ).stdout.strip()
 
         if not commit_log:
@@ -443,17 +453,21 @@ async def teardown_and_route(state: WorkflowState) -> WorkflowState:
 
     if remaining:
         # Move to next repo
-        return update_state_timestamp({
-            **state,
-            "repos_completed": repos_completed,
-            "current_repo": remaining[0],
-            "implemented_tasks": [],
-            "current_node": "setup_workspace",
-        })
+        return update_state_timestamp(
+            {
+                **state,
+                "repos_completed": repos_completed,
+                "current_repo": remaining[0],
+                "implemented_tasks": [],
+                "current_node": "setup_workspace",
+            }
+        )
 
     # All repos done — pause until GitHub delivers CI webhook
-    return update_state_timestamp({
-        **state,
-        "repos_completed": repos_completed,
-        "current_node": "wait_for_ci_gate",
-    })
+    return update_state_timestamp(
+        {
+            **state,
+            "repos_completed": repos_completed,
+            "current_node": "wait_for_ci_gate",
+        }
+    )

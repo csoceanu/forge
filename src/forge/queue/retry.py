@@ -113,10 +113,7 @@ class RetryQueue:
             {json.dumps(entry.to_dict()): next_retry.timestamp()},
         )
 
-        logger.info(
-            f"Queued {message_id} for retry {attempt}/{MAX_RETRY_ATTEMPTS} "
-            f"in {delay:.0f}s"
-        )
+        logger.info(f"Queued {message_id} for retry {attempt}/{MAX_RETRY_ATTEMPTS} in {delay:.0f}s")
         return True
 
     async def _move_to_dead_letter(
@@ -189,10 +186,7 @@ class RetryQueue:
         await redis.zrem(RETRY_QUEUE_KEY, json.dumps(entry.to_dict()))
 
         # Clear attempt counter
-        message_id = (
-            f"{entry.message.source}:{entry.message.ticket_key}:"
-            f"{entry.message.event_id}"
-        )
+        message_id = f"{entry.message.source}:{entry.message.ticket_key}:{entry.message.event_id}"
         await redis.delete(f"{RETRY_ATTEMPTS_KEY}:{message_id}")
 
     async def get_dead_letter_entries(
@@ -244,9 +238,7 @@ class RetryQueue:
             entry = RetryEntry(
                 message=message,
                 attempt=1,
-                next_retry=datetime.utcnow() + timedelta(
-                    seconds=INITIAL_RETRY_DELAY_SECONDS
-                ),
+                next_retry=datetime.utcnow() + timedelta(seconds=INITIAL_RETRY_DELAY_SECONDS),
                 last_error="Requeued from dead-letter",
             )
             await redis.zadd(

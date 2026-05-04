@@ -72,23 +72,22 @@ async def analyze_bug(state: WorkflowState) -> WorkflowState:
         )
 
         # Add RCA as comment to Jira
-        await jira.add_comment(
-            ticket_key,
-            f"## Root Cause Analysis\n\n{rca_content}"
-        )
+        await jira.add_comment(ticket_key, f"## Root Cause Analysis\n\n{rca_content}")
 
         # Set workflow label for RCA pending approval
         await jira.set_workflow_label(ticket_key, ForgeLabel.RCA_PENDING)
 
         logger.info(f"RCA generated for {ticket_key}")
 
-        return update_state_timestamp({
-            **state,
-            "rca_content": rca_content,
-            "current_node": "rca_approval_gate",
-            "last_error": None,
-            "context": {**state.get("context", {}), **context},
-        })
+        return update_state_timestamp(
+            {
+                **state,
+                "rca_content": rca_content,
+                "current_node": "rca_approval_gate",
+                "last_error": None,
+                "context": {**state.get("context", {}), **context},
+            }
+        )
 
     except Exception as e:
         logger.error(f"Bug analysis failed for {ticket_key}: {e}")
@@ -135,7 +134,9 @@ def route_rca_approval(state: WorkflowState) -> str:
         return "regenerate_rca"
 
     if state.get("is_paused"):
-        logger.info(f"RCA approval: workflow paused for {state['ticket_key']}, waiting for approval webhook")
+        logger.info(
+            f"RCA approval: workflow paused for {state['ticket_key']}, waiting for approval webhook"
+        )
         return END
 
     return "implement_bug_fix"
@@ -164,10 +165,12 @@ async def implement_bug_fix(state: WorkflowState) -> WorkflowState:
     # If no workspace, need to set one up
     if not workspace_path:
         # Route to workspace setup with bug context
-        return update_state_timestamp({
-            **state,
-            "current_node": "setup_workspace",
-        })
+        return update_state_timestamp(
+            {
+                **state,
+                "current_node": "setup_workspace",
+            }
+        )
 
     settings = get_settings()
     agent = ForgeAgent(settings)
@@ -210,11 +213,13 @@ async def implement_bug_fix(state: WorkflowState) -> WorkflowState:
 
         logger.info(f"Bug fix implemented for {ticket_key}")
 
-        return update_state_timestamp({
-            **state,
-            "bug_fix_implemented": True,
-            "current_node": "create_pr",
-        })
+        return update_state_timestamp(
+            {
+                **state,
+                "bug_fix_implemented": True,
+                "current_node": "create_pr",
+            }
+        )
 
     except Exception as e:
         logger.error(f"Bug fix implementation failed for {ticket_key}: {e}")
@@ -262,18 +267,17 @@ async def regenerate_rca(state: WorkflowState) -> WorkflowState:
         )
 
         # Update Jira
-        await jira.add_comment(
-            ticket_key,
-            f"## Updated Root Cause Analysis\n\n{new_rca}"
-        )
+        await jira.add_comment(ticket_key, f"## Updated Root Cause Analysis\n\n{new_rca}")
 
-        return update_state_timestamp({
-            **state,
-            "rca_content": new_rca,
-            "feedback_comment": None,
-            "revision_requested": False,
-            "current_node": "rca_approval_gate",
-        })
+        return update_state_timestamp(
+            {
+                **state,
+                "rca_content": new_rca,
+                "feedback_comment": None,
+                "revision_requested": False,
+                "current_node": "rca_approval_gate",
+            }
+        )
 
     except Exception as e:
         logger.error(f"RCA regeneration failed for {ticket_key}: {e}")

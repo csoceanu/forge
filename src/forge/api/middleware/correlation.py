@@ -60,9 +60,7 @@ class CorrelationIdMiddleware(BaseHTTPMiddleware):
         set_correlation_id(correlation_id)
 
         # Log the request with correlation ID
-        logger.info(
-            f"[{correlation_id[:8]}] {request.method} {request.url.path}"
-        )
+        logger.info(f"[{correlation_id[:8]}] {request.method} {request.url.path}")
 
         # Process request
         response = await call_next(request)

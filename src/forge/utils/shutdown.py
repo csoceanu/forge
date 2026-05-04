@@ -114,9 +114,7 @@ class GracefulShutdown:
 
         # Wait for tasks to complete
         if self._running_tasks:
-            logger.info(
-                f"Waiting for {len(self._running_tasks)} tasks to complete"
-            )
+            logger.info(f"Waiting for {len(self._running_tasks)} tasks to complete")
             try:
                 await asyncio.wait_for(
                     asyncio.gather(
@@ -126,9 +124,7 @@ class GracefulShutdown:
                     timeout=self.timeout,
                 )
             except TimeoutError:
-                logger.warning(
-                    f"Timeout waiting for tasks after {self.timeout}s"
-                )
+                logger.warning(f"Timeout waiting for tasks after {self.timeout}s")
 
         # Run cleanup functions
         for cleanup_fn in self._cleanup_tasks:
@@ -139,13 +135,9 @@ class GracefulShutdown:
                     timeout=5.0,
                 )
             except TimeoutError:
-                logger.warning(
-                    f"Cleanup timeout: {cleanup_fn.__name__}"
-                )
+                logger.warning(f"Cleanup timeout: {cleanup_fn.__name__}")
             except Exception as e:
-                logger.error(
-                    f"Cleanup error in {cleanup_fn.__name__}: {e}"
-                )
+                logger.error(f"Cleanup error in {cleanup_fn.__name__}: {e}")
 
         logger.info("Graceful shutdown complete")
 

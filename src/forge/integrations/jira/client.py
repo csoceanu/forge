@@ -139,9 +139,7 @@ class JiraClient:
         response.raise_for_status()
         logger.info(f"Updated description for {issue_key}")
 
-    async def update_custom_field(
-        self, issue_key: str, field_id: str, value: str
-    ) -> None:
+    async def update_custom_field(self, issue_key: str, field_id: str, value: str) -> None:
         """Update a custom field on a Jira issue.
 
         Args:
@@ -183,9 +181,7 @@ class JiraClient:
 
         if transition_id is None:
             available = [t.get("name") for t in transitions]
-            raise ValueError(
-                f"Transition '{transition_name}' not found. Available: {available}"
-            )
+            raise ValueError(f"Transition '{transition_name}' not found. Available: {available}")
 
         # Execute transition
         response = await client.post(
@@ -513,14 +509,16 @@ class JiraClient:
         if mention_account_ids:
             for account_id in mention_account_ids:
                 if account_id:  # Skip empty account IDs
-                    mention_nodes.append({
-                        "type": "mention",
-                        "attrs": {
-                            "id": account_id,
-                            "text": f"@{account_id}",
-                            "accessLevel": "",
-                        },
-                    })
+                    mention_nodes.append(
+                        {
+                            "type": "mention",
+                            "attrs": {
+                                "id": account_id,
+                                "text": f"@{account_id}",
+                                "accessLevel": "",
+                            },
+                        }
+                    )
                     mention_nodes.append({"type": "text", "text": " "})
 
         # Build the error message content
@@ -541,13 +539,16 @@ class JiraClient:
                 # Mentions paragraph
                 {
                     "type": "paragraph",
-                    "content": mention_nodes + [
+                    "content": mention_nodes
+                    + [
                         {
                             "type": "text",
                             "text": "Forge Workflow Error",
                             "marks": [{"type": "strong"}],
                         },
-                    ] if mention_nodes else [
+                    ]
+                    if mention_nodes
+                    else [
                         {
                             "type": "text",
                             "text": "Forge Workflow Error",
@@ -582,9 +583,7 @@ class JiraClient:
         response = await client.get(f"/issue/{issue_key}/comment")
         response.raise_for_status()
         data = response.json()
-        return [
-            JiraComment.from_api_response(c) for c in data.get("comments", [])
-        ]
+        return [JiraComment.from_api_response(c) for c in data.get("comments", [])]
 
     async def get_labels(self, issue_key: str) -> list[str]:
         """Get labels for a Jira issue.
@@ -611,11 +610,7 @@ class JiraClient:
         client = await self._get_client()
         response = await client.put(
             f"/issue/{issue_key}",
-            json={
-                "update": {
-                    "labels": [{"add": label} for label in labels]
-                }
-            },
+            json={"update": {"labels": [{"add": label} for label in labels]}},
         )
         response.raise_for_status()
         logger.info(f"Added labels {labels} to {issue_key}")
@@ -630,11 +625,7 @@ class JiraClient:
         client = await self._get_client()
         response = await client.put(
             f"/issue/{issue_key}",
-            json={
-                "update": {
-                    "labels": [{"remove": label} for label in labels]
-                }
-            },
+            json={"update": {"labels": [{"remove": label} for label in labels]}},
         )
         response.raise_for_status()
         logger.info(f"Removed labels {labels} from {issue_key}")
@@ -660,7 +651,8 @@ class JiraClient:
 
         # Find forge: labels to remove (except the new one and forge:managed)
         labels_to_remove = [
-            label for label in current_labels
+            label
+            for label in current_labels
             if label.startswith(remove_prefix)
             and label != new_label.value
             and label != ForgeLabel.FORGE_MANAGED.value
@@ -683,8 +675,7 @@ class JiraClient:
         )
         response.raise_for_status()
         logger.info(
-            f"Set workflow label {new_label.value} on {issue_key} "
-            f"(removed: {labels_to_remove})"
+            f"Set workflow label {new_label.value} on {issue_key} (removed: {labels_to_remove})"
         )
 
     async def add_structured_comment(
@@ -823,10 +814,12 @@ class JiraClient:
             for para in text.split("\n\n"):
                 para = para.strip()
                 if para:
-                    content.append({
-                        "type": "paragraph",
-                        "content": [{"type": "text", "text": para}],
-                    })
+                    content.append(
+                        {
+                            "type": "paragraph",
+                            "content": [{"type": "text", "text": para}],
+                        }
+                    )
             return {
                 "type": "doc",
                 "version": 1,

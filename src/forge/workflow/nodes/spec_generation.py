@@ -97,9 +97,7 @@ async def generate_spec(state: WorkflowState) -> WorkflowState:
         except Exception as e:
             # Jira update failed but we have content - log and continue
             jira_error = str(e)
-            logger.warning(
-                f"Jira update failed for {ticket_key}, but spec was generated: {e}"
-            )
+            logger.warning(f"Jira update failed for {ticket_key}, but spec was generated: {e}")
 
         logger.info(f"Spec generated for {ticket_key} ({len(spec_content)} chars)")
 
@@ -110,17 +108,20 @@ async def generate_spec(state: WorkflowState) -> WorkflowState:
             "generated_at": datetime.now(UTC).isoformat(),
         }
 
-        return update_state_timestamp({
-            **state,
-            "spec_content": spec_content,
-            "generation_context": generation_context,
-            "current_node": "spec_approval_gate",
-            "last_error": f"Jira update pending: {jira_error}" if jira_error else None,
-        })
+        return update_state_timestamp(
+            {
+                **state,
+                "spec_content": spec_content,
+                "generation_context": generation_context,
+                "current_node": "spec_approval_gate",
+                "last_error": f"Jira update pending: {jira_error}" if jira_error else None,
+            }
+        )
 
     except Exception as e:
         logger.error(f"Spec generation failed for {ticket_key}: {e}")
         from forge.workflow.nodes.error_handler import notify_error
+
         await notify_error(state, str(e), "generate_spec")
         # If we have partial content, save it even on failure
         result_state = {
@@ -205,18 +206,21 @@ async def regenerate_spec_with_feedback(state: WorkflowState) -> WorkflowState:
 
         logger.info(f"Spec regenerated for {ticket_key} ({len(new_spec)} chars)")
 
-        return update_state_timestamp({
-            **state,
-            "spec_content": new_spec,
-            "feedback_comment": None,
-            "revision_requested": False,
-            "current_node": "spec_approval_gate",
-            "last_error": None,
-        })
+        return update_state_timestamp(
+            {
+                **state,
+                "spec_content": new_spec,
+                "feedback_comment": None,
+                "revision_requested": False,
+                "current_node": "spec_approval_gate",
+                "last_error": None,
+            }
+        )
 
     except Exception as e:
         logger.error(f"Spec regeneration failed for {ticket_key}: {e}")
         from forge.workflow.nodes.error_handler import notify_error
+
         await notify_error(state, str(e), "regenerate_spec")
         return {
             **state,

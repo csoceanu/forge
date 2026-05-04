@@ -42,11 +42,13 @@ async def local_review_changes(state: WorkflowState) -> WorkflowState:
             f"Max local review attempts ({MAX_REVIEW_ATTEMPTS}) reached for "
             f"{ticket_key}, proceeding to PR"
         )
-        return update_state_timestamp({
-            **state,
-            "local_review_attempts": 0,
-            "current_node": "create_pr",
-        })
+        return update_state_timestamp(
+            {
+                **state,
+                "local_review_attempts": 0,
+                "current_node": "create_pr",
+            }
+        )
 
     logger.info(
         f"Running local code review for {ticket_key} "
@@ -99,11 +101,13 @@ async def local_review_changes(state: WorkflowState) -> WorkflowState:
             logger.warning(
                 f"Breaking issues remain after review attempt {review_attempts + 1}, retrying"
             )
-            return update_state_timestamp({
-                **state,
-                "local_review_attempts": review_attempts + 1,
-                "current_node": "local_review",
-            })
+            return update_state_timestamp(
+                {
+                    **state,
+                    "local_review_attempts": review_attempts + 1,
+                    "current_node": "local_review",
+                }
+            )
 
         if has_unfixed:
             logger.warning(
@@ -113,22 +117,26 @@ async def local_review_changes(state: WorkflowState) -> WorkflowState:
         else:
             logger.info(f"Local review passed for {ticket_key}")
 
-        return update_state_timestamp({
-            **state,
-            "local_review_attempts": 0,
-            "current_node": "create_pr",
-            "last_error": None,
-        })
+        return update_state_timestamp(
+            {
+                **state,
+                "local_review_attempts": 0,
+                "current_node": "create_pr",
+                "last_error": None,
+            }
+        )
 
     except Exception as e:
         # Non-blocking — a review failure should not stop the PR from being created
         logger.error(f"Local review failed for {ticket_key}: {e}")
-        return update_state_timestamp({
-            **state,
-            "local_review_attempts": 0,
-            "current_node": "create_pr",
-            "last_error": None,
-        })
+        return update_state_timestamp(
+            {
+                **state,
+                "local_review_attempts": 0,
+                "current_node": "create_pr",
+                "last_error": None,
+            }
+        )
 
 
 def _has_unfixed_breaking_issues(output: str) -> bool:

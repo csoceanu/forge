@@ -25,6 +25,7 @@ class FeatureWorkflow(BaseWorkflow):
     def build_graph(self) -> StateGraph:
         # Lazy import to avoid circular dependency
         from forge.workflow.feature.graph import build_feature_graph
+
         return build_feature_graph()
 
     def create_initial_state(self, ticket_key: str, **kwargs: Any) -> FeatureState:

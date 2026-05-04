@@ -130,15 +130,12 @@ async def decompose_epics(state: WorkflowState) -> WorkflowState:
                     epics_by_repo[repo].append(epic_key)
 
                 logger.info(
-                    f"Created Epic {epic_key}: {summary}"
-                    + (f" (repo: {repo})" if repo else "")
+                    f"Created Epic {epic_key}: {summary}" + (f" (repo: {repo})" if repo else "")
                 )
             except Exception as e:
                 # Log but continue creating remaining Epics
                 jira_error = str(e)
-                logger.warning(
-                    f"Failed to create Epic '{summary}' for {ticket_key}: {e}"
-                )
+                logger.warning(f"Failed to create Epic '{summary}' for {ticket_key}: {e}")
 
         logger.info(f"Created {len(epic_keys)} Epics for {ticket_key}")
 
@@ -159,19 +156,19 @@ async def decompose_epics(state: WorkflowState) -> WorkflowState:
                 plan = epic.get("plan", "")
                 repo = epic.get("repo", "")
                 plan_summary_parts.append(
-                    f"## {summary}"
-                    + (f" (repo: {repo})" if repo else "")
-                    + f"\n{plan}"
+                    f"## {summary}" + (f" (repo: {repo})" if repo else "") + f"\n{plan}"
                 )
             generation_context["plan"] = "\n\n".join(plan_summary_parts)
 
-            return update_state_timestamp({
-                **state,
-                "epic_keys": epic_keys,
-                "generation_context": generation_context,
-                "current_node": "plan_approval_gate",
-                "last_error": f"Partial Jira failure: {jira_error}" if jira_error else None,
-            })
+            return update_state_timestamp(
+                {
+                    **state,
+                    "epic_keys": epic_keys,
+                    "generation_context": generation_context,
+                    "current_node": "plan_approval_gate",
+                    "last_error": f"Partial Jira failure: {jira_error}" if jira_error else None,
+                }
+            )
         else:
             # No Epics created at all - this is a failure
             return {
@@ -185,6 +182,7 @@ async def decompose_epics(state: WorkflowState) -> WorkflowState:
         logger.error(f"Epic decomposition failed for {ticket_key}: {e}")
         # Post error notification to Jira
         from forge.workflow.nodes.error_handler import notify_error
+
         await notify_error(state, str(e), "decompose_epics")
         # Save any Epics we managed to create
         result_state = {
@@ -268,9 +266,7 @@ async def update_single_epic(state: WorkflowState) -> WorkflowState:
     feedback = state.get("feedback_comment", "")
 
     if not epic_key:
-        logger.warning(
-            f"No current_epic_key for single Epic update on {ticket_key}"
-        )
+        logger.warning(f"No current_epic_key for single Epic update on {ticket_key}")
         return state
 
     logger.info(f"Updating Epic {epic_key} with feedback")
@@ -302,14 +298,16 @@ async def update_single_epic(state: WorkflowState) -> WorkflowState:
 
         logger.info(f"Updated Epic {epic_key} plan")
 
-        return update_state_timestamp({
-            **state,
-            "current_epic_key": None,
-            "feedback_comment": None,
-            "revision_requested": False,
-            "current_node": "plan_approval_gate",
-            "last_error": None,
-        })
+        return update_state_timestamp(
+            {
+                **state,
+                "current_epic_key": None,
+                "feedback_comment": None,
+                "revision_requested": False,
+                "current_node": "plan_approval_gate",
+                "last_error": None,
+            }
+        )
 
     except Exception as e:
         logger.error(f"Epic update failed for {epic_key}: {e}")
@@ -324,9 +322,7 @@ async def update_single_epic(state: WorkflowState) -> WorkflowState:
         await agent.close()
 
 
-def check_all_epics_approved(
-    state: WorkflowState, epic_statuses: dict[str, str]
-) -> bool:
+def check_all_epics_approved(state: WorkflowState, epic_statuses: dict[str, str]) -> bool:
     """Check if all Epics have been approved.
 
     Args:

@@ -68,8 +68,6 @@ def route_spec_approval(state: WorkflowState) -> str:
         return END
 
     # Spec approved, proceed to epic decomposition
-    logger.info(
-        f"Spec approved for {state['ticket_key']}, proceeding to epic decomposition"
-    )
+    logger.info(f"Spec approved for {state['ticket_key']}, proceeding to epic decomposition")
     record_approval("spec")
     return "decompose_epics"

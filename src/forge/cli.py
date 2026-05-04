@@ -251,7 +251,7 @@ async def cmd_approve(args: argparse.Namespace) -> int:
 
             result = await workflow.ainvoke(updated_state, config=config)
             print(f"Workflow resumed, now at: {result.get('current_node')}")
-            if result.get('is_paused'):
+            if result.get("is_paused"):
                 print("Workflow paused again, waiting for next approval")
         else:
             print("No saved workflow state found, run the workflow again")
@@ -290,10 +290,7 @@ async def cmd_reject(args: argparse.Namespace) -> int:
             return 1
 
         # Add feedback as comment
-        await jira.add_comment(
-            args.ticket,
-            f"**Revision Requested**\n\n{args.feedback}"
-        )
+        await jira.add_comment(args.ticket, f"**Revision Requested**\n\n{args.feedback}")
         print(f"{stage} rejected for {args.ticket}")
         print(f"Feedback: {args.feedback}")
 
@@ -314,7 +311,7 @@ async def cmd_reject(args: argparse.Namespace) -> int:
 
             result = await workflow.ainvoke(updated_state, config=config)
             print(f"Workflow resumed for regeneration, now at: {result.get('current_node')}")
-            if result.get('is_paused'):
+            if result.get("is_paused"):
                 print("Regeneration complete, waiting for approval")
         else:
             print("No saved workflow state found, run the workflow again")
@@ -323,6 +320,7 @@ async def cmd_reject(args: argparse.Namespace) -> int:
     except Exception as e:
         print(f"Error: {e}", file=sys.stderr)
         import traceback
+
         traceback.print_exc()
         return 1
     finally:
@@ -371,10 +369,12 @@ async def cmd_list(_args: argparse.Namespace) -> int:
                     # Get checkpoint data
                     data = await redis_client.get(key)
                     if data:
-                        workflows.append({
-                            "ticket": ticket_id,
-                            "key": key_str,
-                        })
+                        workflows.append(
+                            {
+                                "ticket": ticket_id,
+                                "key": key_str,
+                            }
+                        )
 
             if cursor == 0:
                 break
@@ -424,9 +424,9 @@ async def cmd_retry(args: argparse.Namespace) -> int:
         # Resume workflow
         result = await workflow.ainvoke(updated_state, config=config)
         print(f"\nWorkflow retried, now at: {result.get('current_node')}")
-        if result.get('is_paused'):
+        if result.get("is_paused"):
             print("Workflow paused, waiting for approval")
-        if result.get('last_error'):
+        if result.get("last_error"):
             print(f"Error: {result.get('last_error')}")
 
         return 0
@@ -499,6 +499,7 @@ async def cmd_health(_args: argparse.Namespace) -> int:
     if settings.jira_api_token.get_secret_value() != "your-jira-api-token":
         try:
             from forge.integrations.jira.client import JiraClient
+
             jira = JiraClient()
             # Try to get projects (simple API call)
             await jira.close()
@@ -527,7 +528,8 @@ def main() -> int:
         description="Forge SDLC Orchestrator CLI",
     )
     parser.add_argument(
-        "-v", "--verbose",
+        "-v",
+        "--verbose",
         action="store_true",
         help="Enable verbose logging",
     )
@@ -588,7 +590,8 @@ def main() -> int:
     )
     reject_parser.add_argument("ticket", help="Jira ticket key")
     reject_parser.add_argument(
-        "--feedback", "-f",
+        "--feedback",
+        "-f",
         required=True,
         help="Feedback explaining why rejected and what to change",
     )
@@ -626,7 +629,8 @@ def main() -> int:
     )
     logs_parser.add_argument("ticket", help="Jira ticket key")
     logs_parser.add_argument(
-        "--limit", "-n",
+        "--limit",
+        "-n",
         type=int,
         default=50,
         help="Number of log entries to show (default: 50)",

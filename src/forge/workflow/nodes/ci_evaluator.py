@@ -41,11 +41,13 @@ async def evaluate_ci_status(state: WorkflowState) -> WorkflowState:
 
     if not pr_urls:
         logger.info(f"No PRs to evaluate for {ticket_key}")
-        return update_state_timestamp({
-            **state,
-            "ci_status": "no_prs",
-            "current_node": "complete",
-        })
+        return update_state_timestamp(
+            {
+                **state,
+                "ci_status": "no_prs",
+                "current_node": "complete",
+            }
+        )
 
     logger.info(f"Evaluating CI status for {ticket_key}")
 
@@ -92,17 +94,17 @@ async def evaluate_ci_status(state: WorkflowState) -> WorkflowState:
             # If no check runs exist yet, CI is still pending
             if not check_runs:
                 logger.info(f"No CI checks registered yet for {pr_url}, waiting for webhook")
-                return update_state_timestamp({
-                    **state,
-                    "ci_status": "pending",
-                    "current_node": "ci_evaluator",  # Stay here, wait for webhook
-                })
+                return update_state_timestamp(
+                    {
+                        **state,
+                        "ci_status": "pending",
+                        "current_node": "ci_evaluator",  # Stay here, wait for webhook
+                    }
+                )
 
             for check in check_runs:
                 if _is_skipped(check):
-                    logger.info(
-                        f"CI check skipped by human override: {check.get('name')}"
-                    )
+                    logger.info(f"CI check skipped by human override: {check.get('name')}")
                     _any_skipped = True
                     continue
 
@@ -126,22 +128,26 @@ async def evaluate_ci_status(state: WorkflowState) -> WorkflowState:
                     logger.info(f"CI still running for {pr_url}")
                 elif conclusion not in ("success", "skipped", "neutral"):
                     all_passed = False
-                    failed_checks.append({
-                        "pr_url": pr_url,
-                        "name": check_name,
-                        "conclusion": conclusion,
-                        "output": check.get("output", {}),
-                        "log_url": check.get("html_url", ""),
-                    })
+                    failed_checks.append(
+                        {
+                            "pr_url": pr_url,
+                            "name": check_name,
+                            "conclusion": conclusion,
+                            "output": check.get("output", {}),
+                            "log_url": check.get("html_url", ""),
+                        }
+                    )
 
         if all_passed:
             logger.info(f"All CI checks passed for {ticket_key}")
-            return update_state_timestamp({
-                **state,
-                "ci_status": "passed",
-                "current_node": "human_review_gate",
-                "last_error": None,
-            })
+            return update_state_timestamp(
+                {
+                    **state,
+                    "ci_status": "passed",
+                    "current_node": "human_review_gate",
+                    "last_error": None,
+                }
+            )
 
         # Some checks still running AND some have failed — wait for all to complete
         # before starting the fix pipeline. The fix agent needs the full failure list.
@@ -150,55 +156,57 @@ async def evaluate_ci_status(state: WorkflowState) -> WorkflowState:
                 f"CI partially complete for {ticket_key} "
                 f"({len(failed_checks)} failed, more still running) — waiting"
             )
-            return update_state_timestamp({
-                **state,
-                "ci_status": "pending",
-                "current_node": "ci_evaluator",
-            })
+            return update_state_timestamp(
+                {
+                    **state,
+                    "ci_status": "pending",
+                    "current_node": "ci_evaluator",
+                }
+            )
 
         # Checks are still running but none have failed yet — wait for the next webhook.
         # This prevents the fix pipeline from firing while real CI jobs are in-progress.
         if not failed_checks:
-            logger.info(
-                f"CI checks still running for {ticket_key}, waiting for completion"
+            logger.info(f"CI checks still running for {ticket_key}, waiting for completion")
+            return update_state_timestamp(
+                {
+                    **state,
+                    "ci_status": "pending",
+                    "current_node": "ci_evaluator",
+                }
             )
-            return update_state_timestamp({
-                **state,
-                "ci_status": "pending",
-                "current_node": "ci_evaluator",
-            })
 
         # CI failed - check if we can retry
         max_retries = settings.ci_fix_max_retries
         if ci_fix_attempts >= max_retries:
-            logger.warning(
-                f"CI fix retry limit ({max_retries}) reached for {ticket_key}"
-            )
+            logger.warning(f"CI fix retry limit ({max_retries}) reached for {ticket_key}")
             record_ci_fix_attempt(repo=state.get("current_repo", "unknown"), result="exhausted")
-            return update_state_timestamp({
-                **state,
-                "ci_status": "failed",
-                "ci_failed_checks": failed_checks,
-                "current_node": "ci_evaluator",  # preserved so retry resumes here
-                "last_error": "CI fix retry limit reached",
-            })
+            return update_state_timestamp(
+                {
+                    **state,
+                    "ci_status": "failed",
+                    "ci_failed_checks": failed_checks,
+                    "current_node": "ci_evaluator",  # preserved so retry resumes here
+                    "last_error": "CI fix retry limit reached",
+                }
+            )
 
         # Attempt autonomous fix
-        logger.info(
-            f"CI failed for {ticket_key}, attempt "
-            f"{ci_fix_attempts + 1}/{max_retries}"
+        logger.info(f"CI failed for {ticket_key}, attempt {ci_fix_attempts + 1}/{max_retries}")
+        return update_state_timestamp(
+            {
+                **state,
+                "ci_status": "fixing",
+                "ci_failed_checks": failed_checks,
+                "ci_fix_attempts": ci_fix_attempts + 1,
+                "current_node": "attempt_ci_fix",
+            }
         )
-        return update_state_timestamp({
-            **state,
-            "ci_status": "fixing",
-            "ci_failed_checks": failed_checks,
-            "ci_fix_attempts": ci_fix_attempts + 1,
-            "current_node": "attempt_ci_fix",
-        })
 
     except Exception as e:
         logger.error(f"CI evaluation failed for {ticket_key}: {e}")
         from forge.workflow.nodes.error_handler import notify_error
+
         await notify_error(state, str(e), "ci_evaluator")
         return {
             **state,
@@ -230,10 +238,12 @@ async def attempt_ci_fix(state: WorkflowState) -> WorkflowState:
     workspace_path = state.get("workspace_path")
 
     if not failed_checks:
-        return update_state_timestamp({
-            **state,
-            "current_node": "ci_evaluator",
-        })
+        return update_state_timestamp(
+            {
+                **state,
+                "current_node": "ci_evaluator",
+            }
+        )
 
     logger.info(f"Attempting CI fix for {ticket_key}")
 
@@ -253,6 +263,7 @@ async def attempt_ci_fix(state: WorkflowState) -> WorkflowState:
     except Exception as _setup_err:
         logger.error(f"Workspace setup failed for {ticket_key}: {_setup_err}")
         from forge.workflow.nodes.error_handler import notify_error
+
         await notify_error(state, str(_setup_err), "attempt_ci_fix")
         return {
             **state,
@@ -298,11 +309,13 @@ async def attempt_ci_fix(state: WorkflowState) -> WorkflowState:
 
         if not fix_plan_file.exists():
             logger.warning(f"No fix plan written for {ticket_key} — skipping fix phase")
-            return update_state_timestamp({
-                **state,
-                "current_node": "wait_for_ci_gate",
-                "last_error": None,
-            })
+            return update_state_timestamp(
+                {
+                    **state,
+                    "current_node": "wait_for_ci_gate",
+                    "last_error": None,
+                }
+            )
 
         fix_plan = fix_plan_file.read_text()
         logger.info(f"Phase 1 complete: fix plan generated ({len(fix_plan)} chars)")
@@ -375,26 +388,31 @@ async def attempt_ci_fix(state: WorkflowState) -> WorkflowState:
             _repo = state.get("current_repo", "/")
             _owner, _repo_name = (_repo.split("/") + [""])[:2]
             await sync_pr_description(
-                state, git,
-                owner=_owner, repo=_repo_name,
+                state,
+                git,
+                owner=_owner,
+                repo=_repo_name,
                 pr_number=state.get("current_pr_number"),
                 attempt=attempt,
             )
 
-        return update_state_timestamp({
-            **state,
-            "current_node": "wait_for_ci_gate",
-            "last_error": None,
-        })
+        return update_state_timestamp(
+            {
+                **state,
+                "current_node": "wait_for_ci_gate",
+                "last_error": None,
+            }
+        )
 
     except Exception as e:
         logger.error(f"CI fix failed for {ticket_key}: {e}")
         from forge.workflow.nodes.error_handler import notify_error
+
         await notify_error(state, str(e), "attempt_ci_fix")
         return {
             **state,
             "last_error": str(e),
-            "current_node": "attempt_ci_fix"  # preserved so retry resumes here,
+            "current_node": "attempt_ci_fix",  # preserved so retry resumes here,
         }
 
 
@@ -421,15 +439,15 @@ async def wait_for_ci_gate(state: WorkflowState) -> WorkflowState:
             "waiting for GitHub CI webhook"
         )
     else:
-        logger.info(
-            f"Pausing {ticket_key} after PR creation, waiting for GitHub CI webhook"
-        )
+        logger.info(f"Pausing {ticket_key} after PR creation, waiting for GitHub CI webhook")
 
-    return update_state_timestamp({
-        **state,
-        "is_paused": True,
-        "current_node": "wait_for_ci_gate",
-    })
+    return update_state_timestamp(
+        {
+            **state,
+            "is_paused": True,
+            "current_node": "wait_for_ci_gate",
+        }
+    )
 
 
 async def escalate_to_blocked(state: WorkflowState) -> WorkflowState:
@@ -466,7 +484,9 @@ async def escalate_to_blocked(state: WorkflowState) -> WorkflowState:
                 f"Failed checks: {', '.join(check_names)}. "
                 "Manual intervention required."
             )
-        elif last_error and ("repository" in last_error.lower() or "workspace" in last_error.lower()):
+        elif last_error and (
+            "repository" in last_error.lower() or "workspace" in last_error.lower()
+        ):
             # Workspace/repository setup failure
             error_msg = (
                 f"Repository configuration error: {last_error}. "
@@ -478,20 +498,23 @@ async def escalate_to_blocked(state: WorkflowState) -> WorkflowState:
 
         # Post error with @mentions for reporter and assignee
         from forge.workflow.nodes.error_handler import notify_error
+
         await notify_error(state, error_msg, f"escalate_blocked ({current_node})")
         # Set blocked label instead of transitioning to custom status
         await jira.set_workflow_label(ticket_key, ForgeLabel.BLOCKED)
 
         logger.info(f"Ticket {ticket_key} escalated to Blocked")
 
-        return update_state_timestamp({
-            **state,
-            "is_blocked": True,
-            "ci_status": "blocked",
-            # current_node preserved — forge:retry resumes from the node that failed
-            "generation_context": {},
-            "qa_history": [],
-        })
+        return update_state_timestamp(
+            {
+                **state,
+                "is_blocked": True,
+                "ci_status": "blocked",
+                # current_node preserved — forge:retry resumes from the node that failed
+                "generation_context": {},
+                "qa_history": [],
+            }
+        )
 
     except Exception as e:
         logger.error(f"Escalation failed for {ticket_key}: {e}")
@@ -568,7 +591,6 @@ async def _fetch_ci_logs_and_artifacts(
             logger.warning(f"Could not list artifacts for run {run_id}: {e}")
 
 
-
 def _collect_error_info(failed_checks: list[dict[str, Any]]) -> str:
     """Collect and format error information from failed checks.
 
@@ -610,6 +632,3 @@ def _collect_error_info(failed_checks: list[dict[str, Any]]) -> str:
         parts.append("")
 
     return "\n".join(parts)
-
-
-

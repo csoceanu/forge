@@ -59,10 +59,9 @@ def list_versions() -> list[str]:
     Returns:
         List of version directory names.
     """
-    return sorted([
-        d.name for d in PROMPTS_DIR.iterdir()
-        if d.is_dir() and not d.name.startswith("_")
-    ])
+    return sorted(
+        [d.name for d in PROMPTS_DIR.iterdir() if d.is_dir() and not d.name.startswith("_")]
+    )
 
 
 def list_prompts(version: str | None = None) -> list[str]:
@@ -80,9 +79,7 @@ def list_prompts(version: str | None = None) -> list[str]:
     if not version_dir.exists():
         return []
 
-    return sorted([
-        f.stem for f in version_dir.glob("*.md")
-    ])
+    return sorted([f.stem for f in version_dir.glob("*.md")])
 
 
 __all__ = [

@@ -17,6 +17,7 @@ _FORGE_ASK_PATTERN = re.compile(r"^\s*@forge\s+ask", re.IGNORECASE)
 # Pattern for question mark at start (allowing leading whitespace)
 _QUESTION_MARK_PATTERN = re.compile(r"^\s*\?")
 
+
 def classify_comment(comment_text: str) -> CommentType:
     """Classify a Jira comment into question or feedback.
 

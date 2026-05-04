@@ -62,9 +62,7 @@ class QueueConsumer:
 
         for stream in [JIRA_STREAM, GITHUB_STREAM]:
             try:
-                await redis_client.xgroup_create(
-                    stream, CONSUMER_GROUP, id="0", mkstream=True
-                )
+                await redis_client.xgroup_create(stream, CONSUMER_GROUP, id="0", mkstream=True)
                 logger.info(f"Created consumer group {CONSUMER_GROUP} for {stream}")
             except redis.ResponseError as e:
                 if "BUSYGROUP" not in str(e):
@@ -95,9 +93,9 @@ class QueueConsumer:
 
         try:
             issue = await self._jira.get_issue(message.ticket_key)
-            event_status = message.payload.get("issue", {}).get("fields", {}).get(
-                "status", {}
-            ).get("name", "")
+            event_status = (
+                message.payload.get("issue", {}).get("fields", {}).get("status", {}).get("name", "")
+            )
 
             if issue.status != event_status:
                 logger.info(

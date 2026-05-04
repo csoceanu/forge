@@ -87,9 +87,7 @@ class GuardrailsLoader:
         agents = self._load_file(AGENTS_PATHS)
 
         if constitution:
-            logger.info(
-                f"[{repo_name}] Loaded constitution ({len(constitution)} chars)"
-            )
+            logger.info(f"[{repo_name}] Loaded constitution ({len(constitution)} chars)")
         else:
             logger.warning(
                 f"[{repo_name}] No constitution.md found. "
@@ -154,18 +152,12 @@ class GuardrailsLoader:
         warnings = []
 
         if not guardrails.has_constitution:
-            warnings.append(
-                "No constitution found. Code execution may lack constraints."
-            )
+            warnings.append("No constitution found. Code execution may lack constraints.")
 
         if not guardrails.has_agents:
-            warnings.append(
-                "No agents guidelines found. Using default behavior."
-            )
+            warnings.append("No agents guidelines found. Using default behavior.")
 
         if guardrails.constitution and len(guardrails.constitution) < 100:
-            warnings.append(
-                "Constitution is very short. Consider expanding guidelines."
-            )
+            warnings.append("Constitution is very short. Consider expanding guidelines.")
 
         return warnings

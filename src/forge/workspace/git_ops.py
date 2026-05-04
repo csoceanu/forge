@@ -73,22 +73,17 @@ class GitOperations:
         """
         if repo_url is None:
             token = self.settings.github_token.get_secret_value()
-            repo_url = (
-                f"https://x-access-token:{token}@github.com/"
-                f"{self.workspace.repo_name}.git"
-            )
+            repo_url = f"https://x-access-token:{token}@github.com/{self.workspace.repo_name}.git"
 
         # Build clone command (single-branch for faster clone)
         cmd = ["git", "clone", "--single-branch", repo_url, str(self.repo_path)]
 
-        logger.info(
-            f"Cloning {self.workspace.repo_name} to {self.repo_path} "
-            f"(timeout: {timeout}s)"
-        )
+        logger.info(f"Cloning {self.workspace.repo_name} to {self.repo_path} (timeout: {timeout}s)")
         logger.debug(f"Clone command: git clone --single-branch [REDACTED] {self.repo_path}")
 
         # Clone with timeout
         import time
+
         start_time = time.time()
         try:
             result = subprocess.run(
@@ -99,10 +94,7 @@ class GitOperations:
                 timeout=timeout,
             )
             elapsed = time.time() - start_time
-            logger.info(
-                f"Clone completed for {self.workspace.repo_name} "
-                f"in {elapsed:.1f}s"
-            )
+            logger.info(f"Clone completed for {self.workspace.repo_name} in {elapsed:.1f}s")
             if result.stderr:
                 logger.debug(f"Clone stderr: {result.stderr[:500]}")
         except subprocess.TimeoutExpired:
@@ -111,9 +103,7 @@ class GitOperations:
                 f"Clone timed out after {elapsed:.1f}s for {self.workspace.repo_name}. "
                 f"Target path: {self.repo_path}"
             )
-            raise GitError(
-                f"Clone timed out after {timeout}s for {self.workspace.repo_name}"
-            )
+            raise GitError(f"Clone timed out after {timeout}s for {self.workspace.repo_name}")
         except subprocess.CalledProcessError as e:
             logger.error(
                 f"Clone failed for {self.workspace.repo_name}: {e.stderr[:500] if e.stderr else 'no stderr'}"
@@ -183,18 +173,10 @@ class GitOperations:
         self._run_git("fetch", "origin", base_branch)
 
         # Create and checkout branch
-        self._run_git(
-            "checkout", "-b", self.workspace.branch_name,
-            f"origin/{base_branch}"
-        )
-        logger.info(
-            f"Created branch {self.workspace.branch_name} "
-            f"from {base_branch}"
-        )
+        self._run_git("checkout", "-b", self.workspace.branch_name, f"origin/{base_branch}")
+        logger.info(f"Created branch {self.workspace.branch_name} from {base_branch}")
 
-    def checkout_branch(
-        self, branch_name: str | None = None, remote: str = "origin"
-    ) -> None:
+    def checkout_branch(self, branch_name: str | None = None, remote: str = "origin") -> None:
         """Checkout an existing branch, tracking the remote if needed.
 
         On a fresh clone the branch may only exist on the remote. This
@@ -247,8 +229,10 @@ class GitOperations:
 
         self._run_git(
             "commit",
-            "-m", message,
-            "--author", f"{author_name} <forge@noreply.anthropic.com>",
+            "-m",
+            message,
+            "--author",
+            f"{author_name} <forge@noreply.anthropic.com>",
         )
         logger.info(f"Committed: {message[:50]}...")
         return True
@@ -263,9 +247,7 @@ class GitOperations:
         Returns:
             True if the branch exists on the remote.
         """
-        result = self._run_git(
-            "ls-remote", "--heads", remote, branch_name, check=False
-        )
+        result = self._run_git("ls-remote", "--heads", remote, branch_name, check=False)
         return bool(result.stdout.strip())
 
     def check_for_conflicts(self, target_branch: str = "main") -> tuple[bool, list[str]]:
@@ -285,8 +267,7 @@ class GitOperations:
 
         # Check if remote branch exists
         result = self._run_git(
-            "ls-remote", "--heads", "origin", self.workspace.branch_name,
-            check=False
+            "ls-remote", "--heads", "origin", self.workspace.branch_name, check=False
         )
 
         if not result.stdout.strip():
@@ -308,9 +289,10 @@ class GitOperations:
 
         # Check if remote has commits not in local (we need to merge/rebase)
         result = self._run_git(
-            "rev-list", "--count",
+            "rev-list",
+            "--count",
             f"{self.workspace.branch_name}..origin/{self.workspace.branch_name}",
-            check=False
+            check=False,
         )
 
         remote_ahead = int(result.stdout.strip() or "0")
@@ -323,8 +305,7 @@ class GitOperations:
 
         # Try a dry-run merge to detect conflicts
         result = self._run_git(
-            "merge", "--no-commit", "--no-ff", f"origin/{target_branch}",
-            check=False
+            "merge", "--no-commit", "--no-ff", f"origin/{target_branch}", check=False
         )
 
         if result.returncode != 0:

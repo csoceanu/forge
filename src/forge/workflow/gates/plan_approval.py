@@ -50,9 +50,7 @@ def plan_approval_gate(state: WorkflowState) -> WorkflowState:
             "retry_count": state.get("retry_count", 0) + 1,
         }
 
-    logger.info(
-        f"Plan approval gate: pausing workflow for {ticket_key} ({epic_count} Epics)"
-    )
+    logger.info(f"Plan approval gate: pausing workflow for {ticket_key} ({epic_count} Epics)")
 
     return set_paused(state, "plan_approval_gate")
 
@@ -83,9 +81,7 @@ def route_plan_approval(state: WorkflowState) -> str:
             return "update_single_epic"
         elif feedback:
             # Feature-level regeneration
-            logger.info(
-                f"Full Epic regeneration requested for {state['ticket_key']}"
-            )
+            logger.info(f"Full Epic regeneration requested for {state['ticket_key']}")
             record_revision_requested("plan")
             return "regenerate_all_epics"
 
@@ -98,8 +94,6 @@ def route_plan_approval(state: WorkflowState) -> str:
         return END
 
     # All Epics approved, proceed to task generation
-    logger.info(
-        f"Epics approved for {state['ticket_key']}, proceeding to task generation"
-    )
+    logger.info(f"Epics approved for {state['ticket_key']}, proceeding to task generation")
     record_approval("plan")
     return "generate_tasks"

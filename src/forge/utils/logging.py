@@ -65,7 +65,11 @@ class StructuredFormatter(logging.Formatter):
         # Add extra fields from record
         if self.include_extra:
             for key, value in record.__dict__.items():
-                if key not in self.exclude_fields and key not in log_data and not key.startswith("_"):
+                if (
+                    key not in self.exclude_fields
+                    and key not in log_data
+                    and not key.startswith("_")
+                ):
                     try:
                         # Ensure value is JSON serializable
                         json.dumps(value)
@@ -129,9 +133,7 @@ def setup_logging(
     if json_format:
         formatter = StructuredFormatter()
     else:
-        formatter = logging.Formatter(
-            "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-        )
+        formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 
     # Create console handler
     console_handler = logging.StreamHandler(sys.stdout)

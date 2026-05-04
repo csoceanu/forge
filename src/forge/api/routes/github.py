@@ -154,7 +154,9 @@ async def receive_github_webhook(
         span.set_attribute("error", True)
         span.set_attribute("error.type", "validation_error")
         logger.error(f"Failed to parse GitHub webhook: {e}")
-        record_webhook_failed(source="github", event_type=x_github_event, error_type="validation_error")
+        record_webhook_failed(
+            source="github", event_type=x_github_event, error_type="validation_error"
+        )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e),
@@ -163,7 +165,9 @@ async def receive_github_webhook(
         span.set_attribute("error", True)
         span.set_attribute("error.type", "internal_error")
         logger.error(f"Failed to queue GitHub event: {e}")
-        record_webhook_failed(source="github", event_type=x_github_event, error_type="internal_error")
+        record_webhook_failed(
+            source="github", event_type=x_github_event, error_type="internal_error"
+        )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to queue event",
@@ -186,11 +190,14 @@ def _verify_github_signature(payload: bytes, signature: str, secret: str) -> boo
     if not signature:
         return False
 
-    expected = "sha256=" + hmac.new(
-        secret.encode("utf-8"),
-        payload,
-        hashlib.sha256,
-    ).hexdigest()
+    expected = (
+        "sha256="
+        + hmac.new(
+            secret.encode("utf-8"),
+            payload,
+            hashlib.sha256,
+        ).hexdigest()
+    )
 
     return hmac.compare_digest(signature, expected)
 
@@ -205,5 +212,6 @@ def _generate_event_id(payload: dict[str, Any]) -> str:
         SHA256-based event ID.
     """
     import json
+
     content = json.dumps(payload, sort_keys=True)
     return hashlib.sha256(content.encode()).hexdigest()[:16]

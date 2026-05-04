@@ -31,7 +31,4 @@ class WorkflowRouter:
 
     def list_workflows(self) -> list[dict[str, str]]:
         """List all registered workflows (for health/debug endpoints)."""
-        return [
-            {"name": wf.name, "description": wf.description}
-            for wf in self._workflows
-        ]
+        return [{"name": wf.name, "description": wf.description} for wf in self._workflows]

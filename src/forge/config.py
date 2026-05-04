@@ -255,6 +255,7 @@ class Settings(BaseSettings):
         if not self.ci_ignored_checks:
             return []
         return [s.strip() for s in self.ci_ignored_checks.split(",") if s.strip()]
+
     webhook_ack_timeout: float = Field(
         default=0.5, description="Webhook acknowledgment timeout in seconds"
     )

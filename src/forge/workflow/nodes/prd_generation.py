@@ -80,13 +80,9 @@ async def generate_prd(state: WorkflowState) -> WorkflowState:
         except Exception as e:
             # Jira update failed but we have content - log and continue
             jira_error = str(e)
-            logger.warning(
-                f"Jira update failed for {ticket_key}, but PRD was generated: {e}"
-            )
+            logger.warning(f"Jira update failed for {ticket_key}, but PRD was generated: {e}")
 
-        logger.info(
-            f"PRD generated for {ticket_key} ({len(prd_content)} chars)"
-        )
+        logger.info(f"PRD generated for {ticket_key} ({len(prd_content)} chars)")
 
         # Store generation context for Q&A mode
         generation_context = state.get("generation_context", {})
@@ -97,17 +93,20 @@ async def generate_prd(state: WorkflowState) -> WorkflowState:
         }
 
         # If Jira failed, set a warning but still advance (content exists)
-        return update_state_timestamp({
-            **state,
-            "prd_content": prd_content,
-            "generation_context": generation_context,
-            "current_node": "prd_approval_gate",
-            "last_error": f"Jira update pending: {jira_error}" if jira_error else None,
-        })
+        return update_state_timestamp(
+            {
+                **state,
+                "prd_content": prd_content,
+                "generation_context": generation_context,
+                "current_node": "prd_approval_gate",
+                "last_error": f"Jira update pending: {jira_error}" if jira_error else None,
+            }
+        )
 
     except Exception as e:
         logger.error(f"PRD generation failed for {ticket_key}: {e}")
         from forge.workflow.nodes.error_handler import notify_error
+
         await notify_error(state, str(e), "generate_prd")
         # If we have partial content, save it even on failure
         result_state = {
@@ -142,9 +141,7 @@ async def regenerate_prd_with_feedback(state: WorkflowState) -> WorkflowState:
     original_prd = state.get("prd_content", "")
 
     if not feedback:
-        logger.warning(
-            f"No feedback provided for PRD regeneration on {ticket_key}"
-        )
+        logger.warning(f"No feedback provided for PRD regeneration on {ticket_key}")
         return state
 
     logger.info(f"Regenerating PRD for {ticket_key} with feedback")
@@ -172,18 +169,21 @@ async def regenerate_prd_with_feedback(state: WorkflowState) -> WorkflowState:
 
         logger.info(f"PRD regenerated for {ticket_key} ({len(new_prd)} chars)")
 
-        return update_state_timestamp({
-            **state,
-            "prd_content": new_prd,
-            "feedback_comment": None,
-            "revision_requested": False,
-            "current_node": "prd_approval_gate",
-            "last_error": None,
-        })
+        return update_state_timestamp(
+            {
+                **state,
+                "prd_content": new_prd,
+                "feedback_comment": None,
+                "revision_requested": False,
+                "current_node": "prd_approval_gate",
+                "last_error": None,
+            }
+        )
 
     except Exception as e:
         logger.error(f"PRD regeneration failed for {ticket_key}: {e}")
         from forge.workflow.nodes.error_handler import notify_error
+
         await notify_error(state, str(e), "regenerate_prd")
         return {
             **state,
