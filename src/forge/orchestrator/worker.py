@@ -113,8 +113,7 @@ class OrchestratorWorker:
 
                 if workflow_instance is None:
                     logger.error(
-                        f"No workflow found for ticket {ticket_key} "
-                        f"(type={ticket_type}). Skipping."
+                        f"No workflow found for ticket {ticket_key} (type={ticket_type}). Skipping."
                     )
                     return
 
@@ -129,7 +128,9 @@ class OrchestratorWorker:
             logger.debug(f"Existing state for {ticket_key}: {existing_state}")
             if existing_state:
                 logger.debug(f"State values: {existing_state.values}")
-                logger.debug(f"is_paused: {existing_state.values.get('is_paused') if existing_state.values else None}")
+                logger.debug(
+                    f"is_paused: {existing_state.values.get('is_paused') if existing_state.values else None}"
+                )
 
             # Check if we should resume an existing workflow
             should_resume = False
@@ -160,13 +161,13 @@ class OrchestratorWorker:
                 # In that case just persist the state update and stop.
                 # and stop — don't try to invoke a finished graph.
                 terminal_nodes = ("complete", "complete_tasks", "aggregate_feature_status")
-                is_terminal_or_blocked = (
-                    updated_values.get("current_node") in terminal_nodes
-                    or updated_values.get("is_blocked", False)
-                )
+                is_terminal_or_blocked = updated_values.get(
+                    "current_node"
+                ) in terminal_nodes or updated_values.get("is_blocked", False)
                 if is_terminal_or_blocked:
                     state_desc = (
-                        "terminal" if updated_values.get("current_node") in terminal_nodes
+                        "terminal"
+                        if updated_values.get("current_node") in terminal_nodes
                         else "blocked"
                     )
                     logger.info(
@@ -174,6 +175,14 @@ class OrchestratorWorker:
                         f"'{updated_values.get('current_node')}', skipping invocation"
                     )
                     await compiled_workflow.aupdate_state(config, updated_values)
+                    return
+
+                # If _handle_resume_event returned the state object unchanged (identity
+                # check), no signal was recognised — do not invoke the workflow.
+                # Without this guard, nodes in needs_fresh_invoke (e.g. human_review_gate)
+                # would be re-invoked with is_paused=True and immediately re-pause,
+                # producing a misleading "Resuming workflow" log with no real effect.
+                if updated_values is existing_state.values:
                     return
 
                 logger.info(f"Resuming workflow for {ticket_key}")
@@ -231,6 +240,7 @@ class OrchestratorWorker:
 
         except Exception as e:
             import traceback
+
             logger.error(f"Workflow failed for {ticket_key}: {e}")
             logger.error(f"Traceback: {traceback.format_exc()}")
             # Record workflow failed metric
@@ -257,8 +267,7 @@ class OrchestratorWorker:
 
         # Check for label changes indicating approval or retry
         label_changes = [
-            item for item in changelog.get("items", [])
-            if item.get("field") == "labels"
+            item for item in changelog.get("items", []) if item.get("field") == "labels"
         ]
 
         is_approved = False
@@ -290,17 +299,16 @@ class OrchestratorWorker:
             unskip_prefix = "/forge unskip-gate"
 
             if gh_comment_body.lower().startswith(skip_prefix.lower()):
-                check_name = gh_comment_body[len(skip_prefix):].strip()
+                check_name = gh_comment_body[len(skip_prefix) :].strip()
                 if current_node in _CI_STAGES and check_name:
                     skipped = list(current_state.get("ci_skipped_checks", []))
                     if check_name not in skipped:
                         skipped.append(check_name)
-                    logger.info(
-                        f"CI gate skip added for {message.ticket_key}: '{check_name}'"
-                    )
+                    logger.info(f"CI gate skip added for {message.ticket_key}: '{check_name}'")
                     await self._post_skip_gate_feedback(
                         ticket_key=message.ticket_key,
-                        owner=_owner, repo=_repo,
+                        owner=_owner,
+                        repo=_repo,
                         pr_number=pr_number,
                         check_name=check_name,
                         sender=sender,
@@ -315,18 +323,16 @@ class OrchestratorWorker:
                 return current_state
 
             elif gh_comment_body.lower().startswith(unskip_prefix.lower()):
-                check_name = gh_comment_body[len(unskip_prefix):].strip()
+                check_name = gh_comment_body[len(unskip_prefix) :].strip()
                 if current_node in _CI_STAGES and check_name:
                     skipped = [
-                        s for s in current_state.get("ci_skipped_checks", [])
-                        if s != check_name
+                        s for s in current_state.get("ci_skipped_checks", []) if s != check_name
                     ]
-                    logger.info(
-                        f"CI gate skip removed for {message.ticket_key}: '{check_name}'"
-                    )
+                    logger.info(f"CI gate skip removed for {message.ticket_key}: '{check_name}'")
                     await self._post_skip_gate_feedback(
                         ticket_key=message.ticket_key,
-                        owner=_owner, repo=_repo,
+                        owner=_owner,
+                        repo=_repo,
                         pr_number=pr_number,
                         check_name=check_name,
                         sender=sender,
@@ -347,9 +353,7 @@ class OrchestratorWorker:
             # Check for retry label - triggers retry of current stage
             if "forge:retry" in to_labels.lower() and "forge:retry" not in from_labels.lower():
                 is_retry = True
-                logger.info(
-                    f"Detected retry signal via forge:retry label for {current_node}"
-                )
+                logger.info(f"Detected retry signal via forge:retry label for {current_node}")
 
             # Check for approval labels - but only if it matches the current stage
             if "approved" in to_labels.lower() and "pending" in from_labels.lower():
@@ -440,12 +444,16 @@ class OrchestratorWorker:
 
                     # Determine which phase we're in based on current_node
                     plan_phase_nodes = (
-                        "plan_approval_gate", "decompose_epics",
-                        "regenerate_all_epics", "update_single_epic",
+                        "plan_approval_gate",
+                        "decompose_epics",
+                        "regenerate_all_epics",
+                        "update_single_epic",
                     )
                     task_phase_nodes = (
-                        "task_approval_gate", "generate_tasks",
-                        "regenerate_all_tasks", "update_single_task",
+                        "task_approval_gate",
+                        "generate_tasks",
+                        "regenerate_all_tasks",
+                        "update_single_task",
                     )
 
                     if child_ticket_key:
@@ -485,9 +493,7 @@ class OrchestratorWorker:
                                 f"at unexpected node {current_node}: {feedback[:100]}..."
                             )
                     else:
-                        logger.info(
-                            f"Detected Feature-level comment: {feedback[:100]}..."
-                        )
+                        logger.info(f"Detected Feature-level comment: {feedback[:100]}...")
 
         # GitHub pull_request_review events — handled when at human_review_gate.
         # A review submission is the primary signal for the human review stage.
@@ -504,14 +510,46 @@ class OrchestratorWorker:
                 # PR approved — advance to complete_tasks (via route_human_review default)
                 is_approved = True
                 logger.info(f"Detected PR review approval for {message.ticket_key}")
-            elif review_state in ("changes_requested", "commented") and review_body.strip():
-                # Changes requested or review comment — treat as feedback
-                is_rejected = True
-                feedback = review_body
-                logger.info(
-                    f"Detected PR review ({review_state}) for {message.ticket_key}: "
-                    f"{review_body[:100]}..."
-                )
+            elif review_state in ("changes_requested", "commented"):
+                # Always fetch inline comments so the agent gets the full picture,
+                # regardless of whether a summary body is also present.
+                repo_full = payload.get("repository", {}).get("full_name", "")
+                pr_number = payload.get("pull_request", {}).get("number")
+                inline_comments = []
+                if repo_full and pr_number:
+                    owner, repo_name = repo_full.split("/", 1)
+                    gh = GitHubClient()
+                    try:
+                        inline_comments = await gh.get_pull_request_review_comments(
+                            owner, repo_name, pr_number
+                        )
+                    finally:
+                        await gh.close()
+
+                parts = []
+                if review_body.strip():
+                    parts.append(review_body.strip())
+                if inline_comments:
+                    inline_text = "\n\n".join(
+                        f"**{c['path']}** (line {c['position']}):\n{c['body']}"
+                        for c in inline_comments
+                    )
+                    parts.append(f"Inline comments:\n{inline_text}")
+
+                if parts:
+                    feedback = "\n\n".join(parts)
+                    is_rejected = True
+                    logger.info(
+                        f"Detected PR review ({review_state}) for {message.ticket_key}: "
+                        f"body={'yes' if review_body.strip() else 'no'}, "
+                        f"inline comments={len(inline_comments)}"
+                    )
+                else:
+                    logger.info(
+                        f"Detected PR review ({review_state}) for {message.ticket_key} "
+                        f"with no body and no inline comments — ignoring"
+                    )
+                    return current_state
 
         # GitHub pull_request:closed + merged — PR was actually merged
         if (
@@ -538,8 +576,7 @@ class OrchestratorWorker:
 
         # Check if workflow was in an error state (not paused, but has error)
         was_errored = (
-            not current_state.get("is_paused")
-            and current_state.get("last_error") is not None
+            not current_state.get("is_paused") and current_state.get("last_error") is not None
         )
 
         # Check if workflow is at a terminal state (complete)
@@ -609,14 +646,14 @@ class OrchestratorWorker:
 
             if is_terminal or cap_reached:
                 last_error = current_state.get("last_error", "Unknown error")
-                reason = "terminal state" if is_terminal else f"retry cap ({MAX_AUTO_RETRIES}) reached"
+                reason = (
+                    "terminal state" if is_terminal else f"retry cap ({MAX_AUTO_RETRIES}) reached"
+                )
                 logger.warning(
                     f"Workflow for {message.ticket_key} at '{current_node}' requires "
                     f"forge:retry ({reason})"
                 )
-                await self._post_terminal_error_comment(
-                    message.ticket_key, last_error
-                )
+                await self._post_terminal_error_comment(message.ticket_key, last_error)
                 return current_state
             else:
                 # Transient failure — auto-resume and let the node retry
@@ -712,9 +749,7 @@ class OrchestratorWorker:
         except Exception as e:
             logger.warning(f"Failed to post skip-gate feedback: {e}")
 
-    async def _post_terminal_error_comment(
-        self, ticket_key: str, error: str
-    ) -> None:
+    async def _post_terminal_error_comment(self, ticket_key: str, error: str) -> None:
         """Post a comment explaining how to retry a terminal error.
 
         Args:
@@ -758,8 +793,7 @@ class OrchestratorWorker:
             state = await compiled.aget_state(config)
             if state and state.values:
                 logger.debug(
-                    f"Found existing state for {ticket_key} "
-                    f"in workflow '{workflow_instance.name}'"
+                    f"Found existing state for {ticket_key} in workflow '{workflow_instance.name}'"
                 )
                 return workflow_instance, state
         return None, None
@@ -791,9 +825,7 @@ class OrchestratorWorker:
             try:
                 return TicketType(ticket_type_str)
             except ValueError:
-                logger.warning(
-                    f"Unknown ticket type '{ticket_type_str}' for {message.ticket_key}"
-                )
+                logger.warning(f"Unknown ticket type '{ticket_type_str}' for {message.ticket_key}")
                 return TicketType.UNKNOWN
 
         return TicketType.UNKNOWN
@@ -869,6 +901,7 @@ class OrchestratorWorker:
         # Start Prometheus metrics HTTP server
         if self.settings.worker_metrics_enabled:
             from prometheus_client import start_http_server
+
             metrics_port = self.settings.worker_metrics_port
             start_http_server(metrics_port)
             logger.info(f"Worker metrics server started on port {metrics_port}")
@@ -964,6 +997,7 @@ async def run_single_ticket(ticket_key: str) -> dict[str, Any]:
 def main() -> None:
     """Main entry point for the worker."""
     from dotenv import load_dotenv
+
     load_dotenv()  # must happen before basicConfig reads LOG_LEVEL
     logging.basicConfig(
         level=getattr(logging, os.environ.get("LOG_LEVEL", "INFO").upper(), logging.INFO),
