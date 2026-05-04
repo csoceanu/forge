@@ -134,6 +134,7 @@ class TestSyncPrDescription:
         agent_mock = MagicMock()
         agent_mock.run_task = AsyncMock(return_value=updated)
         agent_mock.close = AsyncMock()
+        agent_mock._strip_preamble = MagicMock(side_effect=lambda x: x)
 
         with patch("forge.workflow.nodes.code_review.GitHubClient", return_value=github), \
              patch("forge.workflow.nodes.code_review.JiraClient", return_value=jira), \
@@ -158,6 +159,7 @@ class TestSyncPrDescription:
         agent_mock = MagicMock()
         agent_mock.run_task = AsyncMock(return_value=body)
         agent_mock.close = AsyncMock()
+        agent_mock._strip_preamble = MagicMock(side_effect=lambda x: x)
 
         with patch("forge.workflow.nodes.code_review.GitHubClient", return_value=github), \
              patch("forge.workflow.nodes.code_review.JiraClient", return_value=jira), \
@@ -279,6 +281,7 @@ class TestSyncCalledFromCreatePR:
         mock_jira = MagicMock()
         mock_jira.get_issue = AsyncMock(return_value=MagicMock(summary="Test feature"))
         mock_jira.add_comment = AsyncMock()
+        mock_jira.create_remote_link = AsyncMock()
         mock_jira.close = AsyncMock()
 
         mock_git = MagicMock()
@@ -293,8 +296,8 @@ class TestSyncCalledFromCreatePR:
                    AsyncMock(return_value=(False, []))), \
              patch("forge.workflow.nodes.pr_creation._generate_pr_body_with_agent",
                    AsyncMock(return_value="## Summary\n\nTest PR.")), \
-             patch("forge.workflow.nodes.pr_creation.sync_pr_description") as mock_sync:
-            mock_sync.return_value = None
+             patch("forge.workflow.nodes.pr_creation.sync_pr_description",
+                   new_callable=AsyncMock) as mock_sync:
             await create_pull_request(state)
 
         mock_sync.assert_called_once()
