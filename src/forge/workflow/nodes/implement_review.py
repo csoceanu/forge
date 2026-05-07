@@ -256,6 +256,10 @@ async def implement_review(state: WorkflowState) -> WorkflowState:
         else:
             logger.info(f"No new commits after review implementation for {ticket_key}")
 
+        # Only re-enter the CI gate if we actually pushed new commits; otherwise
+        # CI won't re-trigger and wait_for_ci_gate would block forever.
+        next_node = "wait_for_ci_gate" if unpushed else "human_review_gate"
+
         return update_state_timestamp(
             {
                 **state,
@@ -263,7 +267,8 @@ async def implement_review(state: WorkflowState) -> WorkflowState:
                 "feedback_comment": None,
                 "review_response_posted": False,
                 "contested_comments": [],
-                "current_node": "wait_for_ci_gate",
+                "current_node": next_node,
+                "is_paused": next_node == "human_review_gate",
                 "last_error": None,
             }
         )
