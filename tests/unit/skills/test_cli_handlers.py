@@ -13,6 +13,7 @@ from forge.skills.cli_handlers import (
     cmd_skills_list,
     cmd_skills_update,
 )
+from forge.skills.models import LockEntry
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -568,10 +569,8 @@ def _make_lock_entry(
     resolved_commit: str = "aabbccdd1234aabbccdd1234aabbccdd1234aabc",
     target: str = "default",
     skills: list[str] | None = None,
-) -> "LockEntry":
+) -> LockEntry:
     from datetime import UTC, datetime
-
-    from forge.skills.models import LockEntry
 
     return LockEntry(
         source=source,
@@ -630,9 +629,7 @@ class TestCmdSkillsUpdate:
         assert "Nothing to update" in out
 
     @pytest.mark.asyncio
-    async def test_project_filter_only_processes_matching_entries(
-        self, tmp_path: Path, capsys
-    ):
+    async def test_project_filter_only_processes_matching_entries(self, tmp_path: Path, capsys):
         """--project=MYPROJ skips entries whose target differs."""
         import yaml
 
@@ -857,7 +854,7 @@ class TestCmdSkillsUpdate:
         assert "clone failed" in err
 
     @pytest.mark.asyncio
-    async def test_partial_failure_continues_and_returns_1(self, tmp_path: Path, capsys):
+    async def test_partial_failure_continues_and_returns_1(self, tmp_path: Path):
         """When one entry fails and another succeeds, exit code is 1 but both are processed."""
         import yaml
 
@@ -888,7 +885,7 @@ class TestCmdSkillsUpdate:
 
         call_count = 0
 
-        async def _clone_side_effect(source, ref):
+        async def _clone_side_effect(source, _ref):
             nonlocal call_count
             call_count += 1
             if "bad" in source:
