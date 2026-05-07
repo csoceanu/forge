@@ -979,6 +979,7 @@ NOTE: No repositories configured. Use REPO: unknown for now."""
             context={"is_revision": True, "ticket_key": ticket_key or ""},
         )
 
+        result = self._strip_preamble(result)
         logger.info(f"Regenerated {content_type} ({len(result)} chars)")
         return result
 
