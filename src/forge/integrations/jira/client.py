@@ -903,8 +903,8 @@ class JiraClient:
 
         if not isinstance(value, list):
             logger.warning(
-                f"forge.skills for project {project_key} is not a list (got {type(value).__name__}); "
-                "returning empty list."
+                f"forge.skills for project {project_key} is not a list "
+                f"(got {type(value).__name__}); returning empty list."
             )
             return []
 
