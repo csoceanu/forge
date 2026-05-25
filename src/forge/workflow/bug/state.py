@@ -24,6 +24,9 @@ class BugState(
     bug_fix_implemented: bool
     tdd_approach: bool
 
+    # Documentation
+    docs_pr_url: str | None
+
     # Q&A mode
     qa_history: list[dict[str, str]]  # List of {question, answer, artifact_type, timestamp}
     generation_context: dict[str, Any]  # Stored context from generation

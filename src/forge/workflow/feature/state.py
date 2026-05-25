@@ -39,6 +39,9 @@ class FeatureState(
     parallel_branch_id: int | None
     parallel_total_branches: int | None
 
+    # Documentation
+    docs_pr_url: str | None
+
     # Q&A mode
     qa_history: list[dict[str, str]]  # List of {question, answer, artifact_type, timestamp}
     generation_context: dict[str, Any]  # Stored context from generation
