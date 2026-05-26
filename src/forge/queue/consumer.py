@@ -14,11 +14,15 @@ from forge.models.events import EventSource
 from forge.orchestrator.checkpointer import get_redis_client
 from forge.queue.models import QueueMessage
 from forge.queue.producer import GITHUB_STREAM, JIRA_STREAM
+from forge.queue.retry import RetryQueue
 
 logger = logging.getLogger(__name__)
 
 # Consumer group name
 CONSUMER_GROUP = "forge-workers"
+
+# How often (seconds) the retry-queue poller wakes up
+POLL_INTERVAL_SECONDS = 10
 
 # Handler type for message processing
 MessageHandler = Callable[[QueueMessage], Coroutine[Any, Any, None]]
@@ -60,6 +64,7 @@ class QueueConsumer:
         )
         self._semaphore = asyncio.Semaphore(concurrency)
         self._active_tasks: set[asyncio.Task[None]] = set()
+        self._retry_queue = RetryQueue()
 
     async def _get_redis(self) -> redis.Redis:
         """Get or create Redis client."""
@@ -201,6 +206,64 @@ class QueueConsumer:
                 logger.error(f"Error consuming from {stream}: {e}")
                 await asyncio.sleep(1)  # Brief pause before retry
 
+    async def _process_retry_queue(self) -> None:
+        """Poll the retry queue and re-dispatch due messages.
+
+        Runs as a background task alongside the stream consumers.  Polls on a
+        fixed interval so retries are dispatched once their backoff window has
+        elapsed.
+        """
+        while self._running:
+            try:
+                entries = await self._retry_queue.get_due_messages()
+                for entry in entries:
+                    retry_stream = (
+                        JIRA_STREAM if entry.message.source == EventSource.JIRA else GITHUB_STREAM
+                    )
+                    try:
+                        await self._process_message(entry.message, retry_stream)
+                    except Exception as e:
+                        logger.warning(
+                            f"Retry attempt {entry.attempt} failed for "
+                            f"{entry.message.ticket_key}:{entry.message.event_id}: {e}"
+                        )
+                        # Remove only the sorted-set entry — do NOT delete the attempt
+                        # counter key.  enqueue_for_retry will INCR the existing key so
+                        # the counter keeps accumulating and the message can eventually
+                        # reach the dead-letter queue.
+                        await self._retry_queue.remove_from_retry_without_counter_reset(entry)
+                        await self._retry_queue.enqueue_for_retry(entry.message, str(e))
+                        continue
+
+                    # Message processing succeeded — clean up retry state and
+                    # acknowledge the original stream entry (best-effort).
+                    await self._retry_queue.remove_from_retry(entry)
+                    logger.info(
+                        f"Retry succeeded for {entry.message.ticket_key}:"
+                        f"{entry.message.event_id} (attempt {entry.attempt})"
+                    )
+                    stream = (
+                        JIRA_STREAM if entry.message.source == EventSource.JIRA else GITHUB_STREAM
+                    )
+                    try:
+                        redis_client = await self._get_redis()
+                        await redis_client.xack(stream, CONSUMER_GROUP, entry.message.message_id)
+                    except Exception as xack_err:
+                        # xack is best-effort: the message was already successfully
+                        # processed and removed from the retry queue.  A failure here
+                        # only means the PEL entry lingers; it will not be reprocessed
+                        # because the retry-queue entry is gone.
+                        logger.warning(
+                            f"xack failed for {entry.message.event_id} after successful "
+                            f"retry (PEL entry may linger): {xack_err}"
+                        )
+            except asyncio.CancelledError:
+                break
+            except Exception as e:
+                logger.error(f"Error in retry queue poller: {e}")
+
+            await asyncio.sleep(POLL_INTERVAL_SECONDS)
+
     async def start(self) -> None:
         """Start consuming from all registered streams."""
         await self._ensure_consumer_groups()
@@ -213,6 +276,7 @@ class QueueConsumer:
             tasks.append(self._consume_stream(GITHUB_STREAM, EventSource.GITHUB))
 
         if tasks:
+            tasks.append(self._process_retry_queue())
             logger.info(f"Consumer {self.consumer_name} starting...")
             await asyncio.gather(*tasks)
 
