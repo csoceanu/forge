@@ -46,6 +46,7 @@ from forge.workflow.nodes.rca_option_gate import (
     regenerate_rca,
     route_rca_option,
 )
+from forge.workflow.nodes.rebase import rebase_pr
 from forge.workflow.nodes.spec_generation import (
     generate_spec,
     regenerate_spec_with_feedback,
@@ -140,4 +141,6 @@ __all__ = [
     # Q&A handling
     "answer_question",
     "extract_question_text",
+    # Rebase (merge conflict resolution)
+    "rebase_pr",
 ]

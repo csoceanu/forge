@@ -42,6 +42,7 @@ from forge.workflow.nodes.rca_option_gate import (
     regenerate_rca,
     route_rca_option,
 )
+from forge.workflow.nodes.rebase import rebase_pr
 from forge.workflow.nodes.triage import route_triage_gate, triage_check, triage_gate
 from forge.workflow.nodes.workspace_setup import setup_workspace
 from forge.workflow.utils import resolve_shared_resume_node
@@ -415,6 +416,7 @@ def build_bug_graph() -> StateGraph:
             "implement_review": "implement_review",
             "review_response_gate": "review_response_gate",
             "escalate_blocked": "escalate_blocked",
+            "rebase_pr": "rebase_pr",
             END: END,
         },
     )
@@ -601,6 +603,24 @@ def build_bug_graph() -> StateGraph:
         {
             "implement_review": "implement_review",
             "human_review_gate": "human_review_gate",
+            END: END,
+        },
+    )
+
+    # ── Rebase (merge conflict resolution, triggered by /forge rebase) ──
+    graph.add_node("rebase_pr", rebase_pr)
+    graph.add_conditional_edges(
+        "rebase_pr",
+        lambda s: s.get("current_node", END),
+        {
+            "triage_gate": "triage_gate",
+            "rca_option_gate": "rca_option_gate",
+            "plan_approval_gate": "plan_approval_gate",
+            "setup_workspace": "setup_workspace",
+            "implement_bug_fix": "implement_bug_fix",
+            "ci_evaluator": "ci_evaluator",
+            "human_review_gate": "human_review_gate",
+            "escalate_blocked": "escalate_blocked",
             END: END,
         },
     )

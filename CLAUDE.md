@@ -118,8 +118,9 @@ podman rm $(podman ps -a --filter name=forge- -q)
 |---------|-------|--------|
 | `/forge skip-gate <name>` | PR comment | Skip a named CI check (substring match); persists across pushes |
 | `/forge unskip-gate <name>` | PR comment | Remove a previously set skip |
+| `/forge rebase` | PR comment | Merge main into PR branch, resolving conflicts with AI |
 
-Commands are only active when the workflow is at a CI stage (`wait_for_ci_gate`, `ci_evaluator`, `attempt_ci_fix`).
+Skip-gate commands are only active at CI stages (`wait_for_ci_gate`, `ci_evaluator`, `attempt_ci_fix`). Rebase works from any workflow stage.
 
 ## Container Execution
 

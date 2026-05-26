@@ -52,6 +52,7 @@ from forge.workflow.nodes.implement_review import (
     route_review_response,
 )
 from forge.workflow.nodes.qa_handler import answer_question
+from forge.workflow.nodes.rebase import rebase_pr
 from forge.workflow.nodes.task_generation import regenerate_all_tasks, update_single_task
 from forge.workflow.utils import resolve_shared_resume_node
 
@@ -420,6 +421,8 @@ def build_feature_graph() -> StateGraph:
             "human_review_gate": "human_review_gate",
             "implement_review": "implement_review",
             "review_response_gate": "review_response_gate",
+            # Rebase (merge conflict resolution)
+            "rebase_pr": "rebase_pr",
             # Terminal states route directly to END
             END: END,
         },
@@ -629,6 +632,25 @@ def build_feature_graph() -> StateGraph:
             "spec_approval_gate": "spec_approval_gate",
             "plan_approval_gate": "plan_approval_gate",
             "task_approval_gate": "task_approval_gate",
+        },
+    )
+
+    # ── Rebase (merge conflict resolution, triggered by /forge rebase) ──
+    graph.add_node("rebase_pr", rebase_pr)
+    graph.add_conditional_edges(
+        "rebase_pr",
+        lambda s: s.get("current_node", END),
+        {
+            "prd_approval_gate": "prd_approval_gate",
+            "spec_approval_gate": "spec_approval_gate",
+            "plan_approval_gate": "plan_approval_gate",
+            "task_approval_gate": "task_approval_gate",
+            "task_router": "task_router",
+            "setup_workspace": "setup_workspace",
+            "ci_evaluator": "ci_evaluator",
+            "human_review_gate": "human_review_gate",
+            "escalate_blocked": "escalate_blocked",
+            END: END,
         },
     )
 
