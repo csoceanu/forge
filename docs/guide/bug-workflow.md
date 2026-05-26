@@ -9,11 +9,12 @@ flowchart TD
     A[Create Bug] --> B[Analyze - RCA]
     B -->|Approval + Q&A| C[Implement Fix]
     C --> D[Local Review]
-    D --> E[Create PR]
-    E --> F[CI/CD + Fix]
-    F --> G[AI Review]
-    G --> H[Human Review]
-    H -->|Approved| I[Merge]
+    D --> E[Update Documentation]
+    E --> F[Create PR]
+    F --> G[CI/CD + Fix]
+    G --> H[AI Review]
+    H --> I[Human Review]
+    I -->|Approved| J[Merge]
 ```
 
 ## Triggering a Bug Workflow

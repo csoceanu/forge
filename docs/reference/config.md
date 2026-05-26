@@ -66,6 +66,13 @@ curl -X PUT \
   -H "Content-Type: application/json" \
   -u "you@example.com:YOUR_API_TOKEN" \
   -d '"org/repo1"'
+
+# Optional: separate documentation repo
+curl -X PUT \
+  "https://your-org.atlassian.net/rest/api/3/project/MYPROJ/properties/forge.docs_repo" \
+  -H "Content-Type: application/json" \
+  -u "you@example.com:YOUR_API_TOKEN" \
+  -d '"org/docs"'
 ```
 
 ## Local Development Overrides

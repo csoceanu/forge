@@ -25,10 +25,10 @@ Forge listens for Jira and github webhooks and orchestrates a multi-stage workfl
 │                      │              │              │                         │
 │                      v              v              v                         │
 │                                                                               │
-│  ┌──────────┐   ┌──────────┐   ┌──────────┐   ┌──────────┐   ┌──────────┐ │
-│  │ Generate │──>│Implement │──>│  Local   │──>│  Create  │──>│  CI/CD   │ │
-│  │  Tasks   │   │   Code   │   │  Review  │   │    PR    │   │  + Fix   │ │
-│  └────┬─────┘   └──────────┘   └──────────┘   └──────────┘   └────┬─────┘ │
+│  ┌──────────┐   ┌──────────┐   ┌──────────┐   ┌──────────┐   ┌──────────┐   ┌──────────┐ │
+│  │ Generate │──>│Implement │──>│  Local   │──>│  Update  │──>│  Create  │──>│  CI/CD   │ │
+│  │  Tasks   │   │   Code   │   │  Review  │   │   Docs   │   │    PR    │   │  + Fix   │ │
+│  └────┬─────┘   └──────────┘   └──────────┘   └──────────┘   └──────────┘   └────┬─────┘ │
 │       │                                                             │        │
 │  [Approval]                                                   [AI Review]   │
 │    ↕ Q&A                                                           │        │
@@ -186,6 +186,7 @@ Create Bug → Analyze (RCA) → [Approval + Q&A] → Implement Fix → PR → C
 | **Task Generation** | AI creates implementation Tasks per repository | Review, ask questions (?), approve or request changes |
 | **Implementation** | Code executed in ephemeral Podman containers | (Automatic) |
 | **Local Code Review** | Reviews the diff against main, fixes breaking issues in-place (up to 2 passes) before PR creation | (Automatic) |
+| **Documentation Update** | Detects and updates stale documentation in the code repo. Optionally supports a separate docs repo via `forge.docs_repo` project property | (Automatic) |
 | **PR Creation** | Fork-based pull request created with AI-generated description; PR body synced against commits | (Automatic) |
 | **CI Validation** | Pauses until GitHub CI webhook; on failure: runs two-stage analyze-then-fix pipeline (up to 5 retries). Each fix pass is reviewed in-place before push; PR description synced after each push. Specific checks can be skipped via PR comment. | (Automatic + `/forge skip-gate`) |
 | **AI Review** | Reviews the PR against the spec after CI passes | (Automatic) |
@@ -264,6 +265,13 @@ curl -X PUT \
   -H "Content-Type: application/json" \
   -u "you@example.com:YOUR_API_TOKEN" \
   -d '"org/repo1"'
+
+# Optional: separate documentation repo (if docs don't live with the code)
+curl -X PUT \
+  "https://your-org.atlassian.net/rest/api/3/project/MYPROJ/properties/forge.docs_repo" \
+  -H "Content-Type: application/json" \
+  -u "you@example.com:YOUR_API_TOKEN" \
+  -d '"org/docs"'
 ```
 
 If these properties are not set, Forge posts a clear configuration error comment on the ticket and blocks the workflow until they are added.
