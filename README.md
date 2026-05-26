@@ -166,6 +166,18 @@ Skips persist across pushes — if the infra check fails again on the next commi
 
 > **Note:** Certain checks (e.g. `tide`, Prow's merge-queue) are always pending and are permanently ignored. Configure with `CI_IGNORED_CHECKS` in `.env`.
 
+### Resolving Merge Conflicts
+
+When a PR falls behind `main` and develops merge conflicts, post a comment:
+
+```
+/forge rebase
+```
+
+Forge merges `main` into the PR branch, resolving any conflicts using AI. If the merge is clean, it pushes immediately. If there are conflicts, a container with Claude resolves them using the PR description as context, then force-pushes to the fork. This works from any workflow stage.
+
+See [PR Commands](docs/guide/pr-commands.md) for the full reference.
+
 ### Bug Workflow
 
 Bugs follow a five-stage pipeline:
