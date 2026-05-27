@@ -1,4 +1,4 @@
-"""Unit tests for docs_updater node."""
+"""Unit tests for docs_updater and update_docs_repo nodes."""
 
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -7,7 +7,7 @@ from tests.fixtures.workflow_states import make_workflow_state
 
 
 class TestUpdateDocumentationRouting:
-    """Tests for update_documentation routing logic."""
+    """Tests for update_documentation (same-repo, pre-PR) routing logic."""
 
     @pytest.mark.asyncio
     async def test_skips_when_no_workspace(self):
@@ -38,16 +38,11 @@ class TestUpdateDocumentationRouting:
 
         with (
             patch("forge.workflow.nodes.docs_updater.get_settings") as mock_settings,
-            patch("forge.workflow.nodes.docs_updater.JiraClient") as mock_jira_cls,
             patch("forge.workflow.nodes.docs_updater.ContainerRunner") as mock_runner_cls,
             patch("forge.workflow.nodes.docs_updater.GitOperations") as mock_git_cls,
             patch("forge.workflow.nodes.docs_updater.load_prompt", return_value="test prompt"),
         ):
             mock_settings.return_value = MagicMock()
-            mock_jira = MagicMock()
-            mock_jira.get_project_docs_repo = AsyncMock(return_value=None)
-            mock_jira.close = AsyncMock()
-            mock_jira_cls.return_value = mock_jira
             mock_runner = MagicMock()
             mock_runner.run = AsyncMock(return_value=mock_result)
             mock_runner_cls.return_value = mock_runner
@@ -74,15 +69,10 @@ class TestUpdateDocumentationRouting:
 
         with (
             patch("forge.workflow.nodes.docs_updater.get_settings") as mock_settings,
-            patch("forge.workflow.nodes.docs_updater.JiraClient") as mock_jira_cls,
             patch("forge.workflow.nodes.docs_updater.ContainerRunner") as mock_runner_cls,
             patch("forge.workflow.nodes.docs_updater.load_prompt", return_value="test prompt"),
         ):
             mock_settings.return_value = MagicMock()
-            mock_jira = MagicMock()
-            mock_jira.get_project_docs_repo = AsyncMock(return_value=None)
-            mock_jira.close = AsyncMock()
-            mock_jira_cls.return_value = mock_jira
             mock_runner = MagicMock()
             mock_runner.run = AsyncMock(side_effect=RuntimeError("container failed"))
             mock_runner_cls.return_value = mock_runner
@@ -92,76 +82,91 @@ class TestUpdateDocumentationRouting:
         assert result["current_node"] == "create_pr"
         assert result.get("last_error") is None
 
+
+class TestUpdateDocsRepoRouting:
+    """Tests for update_docs_repo (separate repo, post-merge) routing logic."""
+
     @pytest.mark.asyncio
-    async def test_uses_separate_repo_when_docs_repo_set(self):
-        """Routes to separate docs repo flow when forge.docs_repo is set."""
-        from forge.workflow.nodes.docs_updater import update_documentation
+    async def test_skips_when_no_docs_repo(self):
+        """Returns state unchanged when forge.docs_repo is not set."""
+        from forge.workflow.nodes.update_docs_repo import update_docs_repo
 
         state = make_workflow_state(
-            current_node="local_review",
-            workspace_path="/tmp/test-workspace",
+            current_node="human_review_gate",
             current_repo="acme/backend",
             ticket_key="PROJ-123",
-            context={"branch_name": "forge/proj-123", "guardrails": ""},
         )
 
         with (
-            patch("forge.workflow.nodes.docs_updater.get_settings") as mock_settings,
-            patch("forge.workflow.nodes.docs_updater.JiraClient") as mock_jira_cls,
-            patch("forge.workflow.nodes.docs_updater._update_separate_docs_repo") as mock_separate,
-            patch("forge.workflow.nodes.docs_updater.extract_project_key", return_value="PROJ"),
+            patch("forge.workflow.nodes.update_docs_repo.get_settings") as mock_settings,
+            patch("forge.workflow.nodes.update_docs_repo.JiraClient") as mock_jira_cls,
+            patch("forge.workflow.nodes.update_docs_repo.extract_project_key", return_value="PROJ"),
         ):
             mock_settings.return_value = MagicMock()
             mock_jira = MagicMock()
-            mock_jira.get_project_docs_repo = AsyncMock(return_value="acme/docs")
+            mock_jira.get_project_docs_repo = AsyncMock(return_value=None)
             mock_jira.close = AsyncMock()
             mock_jira_cls.return_value = mock_jira
-            mock_separate.return_value = {**state, "current_node": "create_pr", "docs_pr_url": "https://github.com/acme/docs/pull/1"}
 
-            result = await update_documentation(state)
+            result = await update_docs_repo(state)
 
-        mock_separate.assert_called_once_with(state, "acme/docs")
-        assert result.get("docs_pr_url") == "https://github.com/acme/docs/pull/1"
+        assert result is state
 
     @pytest.mark.asyncio
-    async def test_uses_same_repo_when_docs_repo_equals_current(self):
-        """Falls back to same-repo when docs_repo equals current_repo."""
-        from forge.workflow.nodes.docs_updater import update_documentation
+    async def test_skips_when_docs_repo_equals_current(self):
+        """Returns state unchanged when docs_repo matches current_repo."""
+        from forge.workflow.nodes.update_docs_repo import update_docs_repo
 
         state = make_workflow_state(
-            current_node="local_review",
-            workspace_path="/tmp/test-workspace",
+            current_node="human_review_gate",
             current_repo="acme/backend",
             ticket_key="PROJ-123",
-            context={"branch_name": "forge/proj-123", "guardrails": ""},
         )
 
-        mock_result = MagicMock()
-        mock_result.success = True
-
         with (
-            patch("forge.workflow.nodes.docs_updater.get_settings") as mock_settings,
-            patch("forge.workflow.nodes.docs_updater.JiraClient") as mock_jira_cls,
-            patch("forge.workflow.nodes.docs_updater.ContainerRunner") as mock_runner_cls,
-            patch("forge.workflow.nodes.docs_updater.GitOperations") as mock_git_cls,
-            patch("forge.workflow.nodes.docs_updater.load_prompt", return_value="test prompt"),
-            patch("forge.workflow.nodes.docs_updater.extract_project_key", return_value="PROJ"),
+            patch("forge.workflow.nodes.update_docs_repo.get_settings") as mock_settings,
+            patch("forge.workflow.nodes.update_docs_repo.JiraClient") as mock_jira_cls,
+            patch("forge.workflow.nodes.update_docs_repo.extract_project_key", return_value="PROJ"),
         ):
             mock_settings.return_value = MagicMock()
             mock_jira = MagicMock()
             mock_jira.get_project_docs_repo = AsyncMock(return_value="acme/backend")
             mock_jira.close = AsyncMock()
             mock_jira_cls.return_value = mock_jira
-            mock_runner = MagicMock()
-            mock_runner.run = AsyncMock(return_value=mock_result)
-            mock_runner_cls.return_value = mock_runner
-            mock_git = MagicMock()
-            mock_git.has_uncommitted_changes.return_value = False
-            mock_git_cls.return_value = mock_git
 
-            result = await update_documentation(state)
+            result = await update_docs_repo(state)
 
-        assert result["current_node"] == "create_pr"
+        assert result is state
+
+    @pytest.mark.asyncio
+    async def test_non_blocking_on_failure(self):
+        """Returns state unchanged when docs repo update fails."""
+        from forge.workflow.nodes.update_docs_repo import update_docs_repo
+
+        state = make_workflow_state(
+            current_node="human_review_gate",
+            current_repo="acme/backend",
+            ticket_key="PROJ-123",
+        )
+
+        with (
+            patch("forge.workflow.nodes.update_docs_repo.get_settings") as mock_settings,
+            patch("forge.workflow.nodes.update_docs_repo.JiraClient") as mock_jira_cls,
+            patch("forge.workflow.nodes.update_docs_repo.extract_project_key", return_value="PROJ"),
+            patch("forge.workflow.nodes.update_docs_repo.WorkspaceManager") as mock_manager_cls,
+        ):
+            mock_settings.return_value = MagicMock()
+            mock_jira = MagicMock()
+            mock_jira.get_project_docs_repo = AsyncMock(return_value="acme/docs")
+            mock_jira.close = AsyncMock()
+            mock_jira_cls.return_value = mock_jira
+            mock_manager = MagicMock()
+            mock_manager.create_workspace.side_effect = RuntimeError("clone failed")
+            mock_manager_cls.return_value = mock_manager
+
+            result = await update_docs_repo(state)
+
+        assert result is state
 
 
 class TestExtraMountsInContainerRunner:

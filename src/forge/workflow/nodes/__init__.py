@@ -63,6 +63,7 @@ from forge.workflow.nodes.task_router import (
     should_use_parallel_execution,
 )
 from forge.workflow.nodes.triage import route_triage_gate, triage_check, triage_gate
+from forge.workflow.nodes.update_docs_repo import update_docs_repo
 from forge.workflow.nodes.workspace_setup import (
     get_workspace_manager,
     setup_workspace,
@@ -107,6 +108,7 @@ __all__ = [
     "wait_for_ci_gate",
     # Documentation update
     "update_documentation",
+    "update_docs_repo",
     # Local code review
     "local_review_changes",
     # Human review
