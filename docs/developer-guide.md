@@ -94,7 +94,6 @@ Each Jira project that Forge manages needs two properties set by a project admin
 |---|---|---|
 | `forge.repos` | JSON array of strings | Repos available to this project |
 | `forge.default_repo` | JSON string | Repo to use when no explicit assignment is made |
-| `forge.docs_repo` | JSON string (optional) | Separate documentation repo. If set, Forge updates docs there and creates a separate PR |
 
 #### Setting properties via the Jira REST API
 
@@ -112,13 +111,6 @@ curl -X PUT \
   -H "Content-Type: application/json" \
   -u "you@example.com:YOUR_API_TOKEN" \
   -d '"acme/backend"'
-
-# Optional: separate documentation repo
-curl -X PUT \
-  "https://your-org.atlassian.net/rest/api/3/project/MYPROJ/properties/forge.docs_repo" \
-  -H "Content-Type: application/json" \
-  -u "you@example.com:YOUR_API_TOKEN" \
-  -d '"acme/docs"'
 ```
 
 #### What happens when a property is missing

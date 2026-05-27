@@ -12,11 +12,10 @@ graph TD
     D -->|Approval| E[Generate Tasks]
     E -->|Approval| F[Implement Code]
     F --> G[Local Review]
-    G --> H[Update Documentation]
-    H --> I[Create PR]
-    I --> J[CI/CD + Fix]
-    J --> K[AI Review]
-    K --> L[Human Review]
+    G --> H[Create PR]
+    H --> I[CI/CD + Fix]
+    I --> J[AI Review]
+    J --> K[Human Review]
 ```
 
 ## Quick Links

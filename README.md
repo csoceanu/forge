@@ -25,10 +25,10 @@ Forge listens for Jira and github webhooks and orchestrates a multi-stage workfl
 │                      │              │              │                         │
 │                      v              v              v                         │
 │                                                                               │
-│  ┌──────────┐   ┌──────────┐   ┌──────────┐   ┌──────────┐   ┌──────────┐   ┌──────────┐ │
-│  │ Generate │──>│Implement │──>│  Local   │──>│  Update  │──>│  Create  │──>│  CI/CD   │ │
-│  │  Tasks   │   │   Code   │   │  Review  │   │   Docs   │   │    PR    │   │  + Fix   │ │
-│  └────┬─────┘   └──────────┘   └──────────┘   └──────────┘   └──────────┘   └────┬─────┘ │
+│  ┌──────────┐   ┌──────────┐   ┌──────────┐   ┌──────────┐   ┌──────────┐ │
+│  │ Generate │──>│Implement │──>│  Local   │──>│  Create  │──>│  CI/CD   │ │
+│  │  Tasks   │   │   Code   │   │  Review  │   │    PR    │   │  + Fix   │ │
+│  └────┬─────┘   └──────────┘   └──────────┘   └──────────┘   └────┬─────┘ │
 │       │                                                             │        │
 │  [Approval]                                                   [AI Review]   │
 │    ↕ Q&A                                                           │        │
@@ -168,11 +168,13 @@ Skips persist across pushes — if the infra check fails again on the next commi
 
 ### Bug Workflow
 
-Bugs follow a simpler workflow:
+Bugs follow a five-stage pipeline:
 
 ```
-Create Bug → Analyze (RCA) → [Approval + Q&A] → Implement Fix → PR → CI → Review → Done
+Create Bug → Triage → RCA Analysis + Reflection → [RCA Option Gate] → Plan → [Plan Approval] → Decompose → Implement → PR → CI → Review → Post-merge Summary
 ```
+
+See [Bug Workflow Guide](docs/guide/bug-workflow.md) for the full stage reference.
 
 ## Workflow Details
 
@@ -186,7 +188,6 @@ Create Bug → Analyze (RCA) → [Approval + Q&A] → Implement Fix → PR → C
 | **Task Generation** | AI creates implementation Tasks per repository | Review, ask questions (?), approve or request changes |
 | **Implementation** | Code executed in ephemeral Podman containers | (Automatic) |
 | **Local Code Review** | Reviews the diff against main, fixes breaking issues in-place (up to 2 passes) before PR creation | (Automatic) |
-| **Documentation Update** | Detects and updates stale documentation in the code repo. Optionally supports a separate docs repo via `forge.docs_repo` project property | (Automatic) |
 | **PR Creation** | Fork-based pull request created with AI-generated description; PR body synced against commits | (Automatic) |
 | **CI Validation** | Pauses until GitHub CI webhook; on failure: runs two-stage analyze-then-fix pipeline (up to 5 retries). Each fix pass is reviewed in-place before push; PR description synced after each push. Specific checks can be skipped via PR comment. | (Automatic + `/forge skip-gate`) |
 | **AI Review** | Reviews the PR against the spec after CI passes | (Automatic) |
@@ -196,9 +197,14 @@ Create Bug → Analyze (RCA) → [Approval + Q&A] → Implement Fix → PR → C
 
 | Stage | What Happens | Human Action |
 |-------|--------------|--------------|
-| **RCA Analysis** | AI analyzes bug and generates root cause analysis | Review, ask questions (?), approve or request changes |
-| **Implementation** | Fix implemented in ephemeral container | (Automatic) |
-| **PR → CI → Review** | Same as Feature workflow | Merge or request changes |
+| **Triage** | Evaluates ticket against 7-field completeness checklist | Provide missing fields if prompted |
+| **RCA Analysis** | Container performs hypothesis-driven codebase exploration; reflection loop validates the output (up to 3 passes) | (Automatic) |
+| **RCA Option Gate** | Structured RCA + fix options posted; `forge:rca-pending` set | Reply `>option N` to select approach; or give feedback |
+| **Planning** | Container produces concrete implementation plan with per-repo `repo:` tags | Approve with `forge:plan-approved`; or give feedback |
+| **Decompose** | One Jira Task created per repository; tasks linked to bug | (Automatic) |
+| **Implementation** | Fix implemented in ephemeral container with TDD + bidirectional test validation; qualitative review (7-item checklist, up to 2 retries) | (Automatic) |
+| **PR → CI → Review** | Same as Feature workflow; PR includes release note section | Merge or request changes |
+| **Post-merge Summary** | Fix summary + release note posted to Jira ticket | (Automatic) |
 
 ## Architecture
 
@@ -265,13 +271,6 @@ curl -X PUT \
   -H "Content-Type: application/json" \
   -u "you@example.com:YOUR_API_TOKEN" \
   -d '"org/repo1"'
-
-# Optional: separate documentation repo (if docs don't live with the code)
-curl -X PUT \
-  "https://your-org.atlassian.net/rest/api/3/project/MYPROJ/properties/forge.docs_repo" \
-  -H "Content-Type: application/json" \
-  -u "you@example.com:YOUR_API_TOKEN" \
-  -d '"org/docs"'
 ```
 
 If these properties are not set, Forge posts a clear configuration error comment on the ticket and blocks the workflow until they are added.

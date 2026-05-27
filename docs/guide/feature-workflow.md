@@ -16,20 +16,19 @@ flowchart TD
     subgraph Implementation
         E -->|Approval| F[Implement in Container]
         F --> G[Local Code Review]
-        G --> H[Update Documentation]
-        H --> I[Create PR]
+        G --> H[Create PR]
     end
 
     subgraph Validation
-        I --> J[CI/CD Pipeline]
-        J -->|Failure| K[AI Fix Loop]
-        K --> J
-        J -->|Pass| L[AI Review]
-        L --> M[Human Review]
+        H --> I[CI/CD Pipeline]
+        I -->|Failure| J[AI Fix Loop]
+        J --> I
+        I -->|Pass| K[AI Review]
+        K --> L[Human Review]
     end
 
-    M -->|Approved| N[Merge]
-    M -->|Changes| F
+    L -->|Approved| M[Merge]
+    L -->|Changes| F
 ```
 
 ## Triggering a Workflow

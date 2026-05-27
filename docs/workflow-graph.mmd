@@ -26,7 +26,6 @@ graph TD;
 	setup_workspace(setup_workspace)
 	implement_task(implement_task)
 	local_review(local_review)
-	update_documentation(update_documentation)
 	create_pr(create_pr)
 	teardown_workspace(teardown_workspace)
 	wait_for_ci_gate(wait_for_ci_gate)
@@ -72,8 +71,7 @@ graph TD;
 	implement_task -.-> local_review;
 	implement_task -.-> escalate_blocked;
 	local_review -.-> local_review;
-	local_review -.-> update_documentation;
-	update_documentation --> create_pr;
+	local_review -.-> create_pr;
 	plan_approval_gate -.-> __end__;
 	plan_approval_gate -.-> generate_tasks;
 	plan_approval_gate -.-> regenerate_all_epics;
