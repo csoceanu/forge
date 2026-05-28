@@ -63,9 +63,7 @@ async def update_docs_repo(state: WorkflowState) -> WorkflowState:
 
     settings = get_settings()
     guardrails = state.get("context", {}).get("guardrails", "")
-    branch_name = state.get("context", {}).get(
-        "branch_name", f"forge/{ticket_key.lower()}"
-    )
+    branch_name = state.get("context", {}).get("branch_name", f"forge/{ticket_key.lower()}")
     fork_owner = state.get("fork_owner", "")
     fork_repo = state.get("fork_repo", "")
 
@@ -135,9 +133,7 @@ async def update_docs_repo(state: WorkflowState) -> WorkflowState:
             # Commit any uncommitted changes
             if docs_git.has_uncommitted_changes():
                 docs_git.stage_all()
-                docs_git.commit(
-                    f"[{ticket_key}] docs: update documentation for code changes"
-                )
+                docs_git.commit(f"[{ticket_key}] docs: update documentation for code changes")
 
             # Check if any commits were made
             if not _branch_has_commits(docs_workspace.path):

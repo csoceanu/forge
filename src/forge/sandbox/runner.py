@@ -366,7 +366,11 @@ class ContainerRunner:
             # Build container name and command
             container_name = self._build_container_name(ticket_key, repo_name)
             cmd = self._build_podman_command(
-                workspace_path, task_file, config, container_name, ticket_key,
+                workspace_path,
+                task_file,
+                config,
+                container_name,
+                ticket_key,
                 extra_mounts=extra_mounts,
             )
 
