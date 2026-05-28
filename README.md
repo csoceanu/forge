@@ -217,6 +217,7 @@ See [Bug Workflow Guide](docs/guide/bug-workflow.md) for the full stage referenc
 | **Implementation** | Fix implemented in ephemeral container with TDD + bidirectional test validation; qualitative review (7-item checklist, up to 2 retries) | (Automatic) |
 | **PR → CI → Review** | Same as Feature workflow; PR includes release note section | Merge or request changes |
 | **Post-merge Summary** | Fix summary + release note posted to Jira ticket | (Automatic) |
+| **Docs Repo Update** | If `forge.docs_repo` is configured, updates separate docs repository (non-blocking) | (Automatic) |
 
 ## Architecture
 
