@@ -1,7 +1,8 @@
 """Unit tests for docs_updater and update_docs_repo nodes."""
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 
 from tests.fixtures.workflow_states import make_workflow_state
 
@@ -175,6 +176,7 @@ class TestExtraMountsInContainerRunner:
     def test_extra_mounts_added_to_podman_command(self):
         """Extra mounts are added as read-only volumes to the podman command."""
         from pathlib import Path
+
         from forge.sandbox.runner import ContainerRunner
 
         with patch("forge.sandbox.runner.shutil") as mock_shutil:
@@ -198,6 +200,7 @@ class TestExtraMountsInContainerRunner:
     def test_no_extra_mounts_by_default(self):
         """No extra mounts when parameter is None."""
         from pathlib import Path
+
         from forge.sandbox.runner import ContainerRunner
 
         with patch("forge.sandbox.runner.shutil") as mock_shutil:

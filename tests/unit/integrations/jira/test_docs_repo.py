@@ -1,7 +1,8 @@
 """Unit tests for get_project_docs_repo method."""
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 
 from forge.integrations.jira.client import JiraClient
 
