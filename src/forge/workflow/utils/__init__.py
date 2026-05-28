@@ -19,6 +19,7 @@ _SHARED_RESUME_MAP: dict[str, str] = {
     "review_response_gate": "review_response_gate",
     "ci_evaluator": "ci_evaluator",
     "attempt_ci_fix": "ci_evaluator",
+    "rebase_pr": "rebase_pr",
 }
 
 _TERMINAL_NODES: frozenset[str] = frozenset(

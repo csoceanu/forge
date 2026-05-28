@@ -114,6 +114,12 @@ At any approval gate, prefix a comment with `?` or `@forge ask` to ask questions
 
 ---
 
+## Merge Conflicts
+
+Bug fix PRs are created from fork branches. If `main` advances while the PR is open, merge conflicts can prevent CI from running. Post `/forge rebase` as a PR comment to trigger AI-assisted conflict resolution. See [PR Commands](pr-commands.md) for details.
+
+---
+
 ## Key Differences from Feature Workflow
 
 | | Feature | Bug |

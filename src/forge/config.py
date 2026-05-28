@@ -297,6 +297,12 @@ class Settings(BaseSettings):
         description="Container CPU limit",
     )
 
+    # Queue Consumer Configuration
+    queue_max_concurrent_tasks: int = Field(
+        default=20,
+        description="Maximum number of in-flight message processing tasks in the queue consumer. Prevents resource exhaustion during message bursts.",
+    )
+
     # Worker Metrics Configuration
     worker_metrics_port: int = Field(
         default=8001,

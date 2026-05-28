@@ -110,8 +110,10 @@ class OrchestratorWorker:
             or payload.get("check_run", {}).get("pull_requests")
             or []
         )
-        pr_number = payload.get("pull_request", {}).get("number") or (
-            suite_prs[0].get("number") if suite_prs else None
+        pr_number = (
+            payload.get("pull_request", {}).get("number")
+            or payload.get("issue", {}).get("number")
+            or (suite_prs[0].get("number") if suite_prs else None)
         )
 
         pr_url = (
@@ -292,6 +294,7 @@ class OrchestratorWorker:
                     "ci_evaluator",
                     "attempt_ci_fix",
                     "human_review_gate",
+                    "rebase_pr",
                 )
 
                 if was_errored or needs_fresh_invoke:
@@ -396,7 +399,7 @@ class OrchestratorWorker:
                 else:
                     is_ci_webhook = True
                     logger.info(f"Detected GitHub CI webhook signal for {current_node}")
-            else:
+            elif "issue_comment" not in event:
                 is_ci_webhook = True
                 logger.info(f"Detected GitHub CI webhook signal for {current_node}")
 
@@ -460,6 +463,29 @@ class OrchestratorWorker:
                         "current_node": "ci_evaluator",
                     }
                 return current_state
+
+            rebase_prefix = "/forge rebase"
+            if gh_comment_body.lower().startswith(rebase_prefix.lower()):
+                if not current_state.get("current_pr_number"):
+                    logger.warning(
+                        f"Ignoring /forge rebase for {message.ticket_key}: no PR in state"
+                    )
+                    return current_state
+
+                logger.info(f"Detected /forge rebase for {message.ticket_key}")
+                await self._post_rebase_feedback(
+                    ticket_key=message.ticket_key,
+                    owner=_owner,
+                    repo=_repo,
+                    pr_number=pr_number,
+                    sender=sender,
+                )
+                return {
+                    **current_state,
+                    "rebase_return_node": current_node,
+                    "is_paused": False,
+                    "current_node": "rebase_pr",
+                }
 
         for change in label_changes:
             to_labels = change.get("toString", "")
@@ -905,6 +931,36 @@ class OrchestratorWorker:
                 await jira.close()
         except Exception as e:
             logger.warning(f"Failed to post skip-gate feedback: {e}")
+
+    async def _post_rebase_feedback(
+        self,
+        ticket_key: str,
+        owner: str,
+        repo: str,
+        pr_number: int | None,
+        sender: str,
+    ) -> None:
+        """Post feedback for a /forge rebase command."""
+        try:
+            github = GitHubClient()
+            jira = JiraClient()
+            try:
+                gh_comment = (
+                    f"Rebase triggered by @{sender}\n\n"
+                    f"Merging `main` into the PR branch and resolving any conflicts. "
+                    f"This may take a few minutes."
+                )
+                jira_comment = (
+                    f"Rebase triggered via `/forge rebase` on PR #{pr_number} by {sender}."
+                )
+                if pr_number:
+                    await github.create_issue_comment(owner, repo, pr_number, gh_comment)
+                await jira.add_comment(ticket_key, jira_comment)
+            finally:
+                await github.close()
+                await jira.close()
+        except Exception as e:
+            logger.warning(f"Failed to post rebase feedback: {e}")
 
     async def _post_terminal_error_comment(self, ticket_key: str, error: str) -> None:
         """Post a comment explaining how to retry a terminal error.
